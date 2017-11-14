@@ -127,8 +127,52 @@ public class Intellect {
         if (!minesInfo.isEmpty()) {
             return claimFromMineInfo();
         } else {
-            return randomRiver();
+            return chooseNearestRiver();
         }
+    }
+
+    //Метод возвращает первую попавшуюся нейтральную реку, прилежащую
+    //любой УЖЕ принадлежащей нам
+    private River chooseNearestRiver() {
+        River result = null;
+        for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
+            System.out.println("Пытаюсь найти ближайшую");
+            if (river.getValue() == RiverState.Neutral) {
+                System.out.println("Пытаюсь проверить этих парней:" + river.getKey().component1() + "-" + river.getKey().component2());
+                if (checkIfNearest(river.getKey())){
+                    result = river.getKey();
+                    return result;
+                }
+
+            }
+        }
+        return result;
+    }
+
+    //Получает на вход нейтральную реку и сравнивает со всеми НАШИМИ
+    //реками
+    private boolean checkIfNearest(River key) {
+        System.out.println("Перебираю все наши реки, пытясь найти лежащую рядом");
+        for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
+            if (river.getValue() == RiverState.Our) {
+                if (checkIfRiversAreNear(key, river.getKey()))
+                    return true;
+            }
+        }
+        System.out.println("Не нашёл лежащей рядом!");
+        return false;
+    }
+
+    //Проверяет прилежат ли реки друг к другу
+    private boolean checkIfRiversAreNear(River river1, River river2) {
+        if (river1.component1() == river2.component1() ||
+                river1.component1() == river2.component2() ||
+                river1.component2() == river2.component1() ||
+                river1.component2() == river2.component2()) {
+            System.out.println("Нашёл лежащую рядом!");
+            return true;
+        }
+        return false;
     }
 
     //Выбор реки исходя из наших знаний о шахтах
@@ -136,6 +180,7 @@ public class Intellect {
         System.out.println("У меня же есть список шахт!");
         int mineId = minesInfo.entrySet().iterator().next().getKey();
         minesInfo.remove(mineId);
+        //decreaseMineValue(mineId);
         return findRiver(mineId);
     }
 
