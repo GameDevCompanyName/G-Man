@@ -21,12 +21,14 @@ public class Intellect {
         this.state = state;
         this.protocol = protocol;
         fillMinesInfo();
+        System.out.println("Инициализируюсь...");
     }
 
     //Здесь мы инициализируем нашу таблицу с шахтами, проходясь
     //по всем рекам и считая, сколько рек находится возле каждой
     //шахты.
     private void fillMinesInfo() {
+        System.out.println("Заполняю информацию о шахтах...");
         for (Integer id : state.getMines()) {
             minesInfo.put(id, 0);
         }
@@ -54,6 +56,7 @@ public class Intellect {
     //сообщения о совершённом ходе. Мы обновляем наши знания о шахтах и
     //реках рядом с ними.
     public void update(Claim claim) {
+        System.out.println("Узнал о том, что кто-то забрал мою реку!");
         if (claim.getPunter() != state.getMyId()) {
             byte shouldSort = 0;
             if (minesInfo.containsKey(claim.getSource())) {
@@ -71,6 +74,7 @@ public class Intellect {
 
     //Сортировка нашей minesInfo после её изменения в update()
     private void sortMinesInfo() {
+        System.out.println("Навожу порядок в списке шахт");
         minesInfo.entrySet()
                 .stream()
                 .sorted(Map.Entry.comparingByValue())
@@ -106,6 +110,8 @@ public class Intellect {
     //Выбирает рандомную реку
     private River randomRiver() {
 
+        System.out.println("Я не знаю, что ещё остаётся.");
+
         Random random = new Random();
         List<River> neutralRivers = getNeutralRivers();
         return neutralRivers.get(random.nextInt(neutralRivers.size()));
@@ -113,6 +119,8 @@ public class Intellect {
 
     //Метод с основной логикой выбора реки
     private River chooseRiver(Map<River, RiverState> rivers) {
+
+        System.out.println("Пытаюсь выбрать реку...");
 
         River choose = null;
 
@@ -127,6 +135,7 @@ public class Intellect {
 
     //Выбор реки исходя из наших знаний о шахтах
     private River claimFromMineInfo() {
+        System.out.println("У меня же есть список шахт!");
         int mineId = minesInfo.entrySet().iterator().next().getKey();
         minesInfo.remove(mineId);
         return findRiver(mineId);
@@ -134,6 +143,7 @@ public class Intellect {
 
     //Найти реку по ID
     private River findRiver(int mineId) {
+        System.out.println("Попробую поискать реку возле шахты " + mineId);
         River result = null;
         for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
             if (river.getValue() == RiverState.Neutral) {
@@ -148,12 +158,21 @@ public class Intellect {
     //Делает ход
     public void makeMove() {
         //River choice = randomRiver(state.getRivers());
+        printMineInfo();
         River choice = chooseRiver(state.getRivers());
         if (choice == null)
             protocol.passMove();
         else
             protocol.claimMove(choice.getSource(), choice.getTarget());
         System.out.println("Я походил. Не бей по лицу.");
+    }
+
+    private void printMineInfo() {
+        System.out.println("-----");
+        for (Map.Entry<Integer, Integer> mine: minesInfo.entrySet()){
+            System.out.println("Шахта: " + mine.getKey() + ", Рек: " + mine.getValue());
+        }
+        System.out.println("-----");
     }
 
 
