@@ -16,11 +16,11 @@ public class Intellect {
     //Здесь мы запоминаем сколько рек находится рядом с шахтой, чтобы
     //затем выбирать, возле каких из них нам покупать реку
     private Map<Integer, Integer> minesInfo = new HashMap();
+    boolean init = false;
 
     public Intellect(State state, Protocol protocol) {
         this.state = state;
         this.protocol = protocol;
-        fillMinesInfo();
         System.out.println("Инициализируюсь...");
     }
 
@@ -110,27 +110,25 @@ public class Intellect {
     //Выбирает рандомную реку
     private River randomRiver() {
 
-        System.out.println("Я не знаю, что ещё остаётся.");
+
 
         Random random = new Random();
         List<River> neutralRivers = getNeutralRivers();
-        return neutralRivers.get(random.nextInt(neutralRivers.size()));
+        River randomRiver = neutralRivers.get(random.nextInt(neutralRivers.size()));
+        System.out.println("Я не знаю, что ещё остаётся: беру реку " + randomRiver.component1() + "-" + randomRiver.component2());
+        return randomRiver;
     }
 
     //Метод с основной логикой выбора реки
-    private River chooseRiver(Map<River, RiverState> rivers) {
+    private River chooseRiver() {
 
         System.out.println("Пытаюсь выбрать реку...");
 
-        River choose = null;
-
         if (!minesInfo.isEmpty()) {
-            choose = claimFromMineInfo();
+            return claimFromMineInfo();
         } else {
-            choose = randomRiver();
+            return randomRiver();
         }
-
-        return choose;
     }
 
     //Выбор реки исходя из наших знаний о шахтах
@@ -146,10 +144,15 @@ public class Intellect {
         System.out.println("Попробую поискать реку возле шахты " + mineId);
         River result = null;
         for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
+            System.out.println("Пытаюсь проверить эту реку на нейтральность:" + river.getKey().component1() + "-" + river.getKey().component2());
             if (river.getValue() == RiverState.Neutral) {
-                if (river.getKey().component1() == mineId || river.getKey().component2() == mineId)
+                System.out.println("Пытаюсь проверить этих парней:" + river.getKey().component1() + "-" + river.getKey().component2());
+                if (river.getKey().component1() == mineId || river.getKey().component2() == mineId){
                     result = river.getKey();
-                break;
+                    System.out.println("Нашёл ключ! + " + river.getKey().component1() + "-" + river.getKey().component2());
+                    return result;
+                }
+                System.out.println("Пытаюсь найти реку, сейчас: " + result);
             }
         }
         return result;
@@ -158,8 +161,12 @@ public class Intellect {
     //Делает ход
     public void makeMove() {
         //River choice = randomRiver(state.getRivers());
+        if (!init){
+            init = true;
+            fillMinesInfo();
+        }
         printMineInfo();
-        River choice = chooseRiver(state.getRivers());
+        River choice = chooseRiver();
         if (choice == null)
             protocol.passMove();
         else
