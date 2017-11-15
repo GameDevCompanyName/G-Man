@@ -3,7 +3,6 @@ package game;
 import gamedev.protocol.Protocol;
 import gamedev.protocol.data.Claim;
 import gamedev.protocol.data.River;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -16,11 +15,11 @@ public class Intellect {
     //Здесь мы запоминаем сколько рек находится рядом с шахтой, чтобы
     //затем выбирать, возле каких из них нам покупать реку
     private Map<Integer, Integer> minesInfo = new HashMap();
-    boolean init = false;
 
     public Intellect(State state, Protocol protocol) {
         this.state = state;
         this.protocol = protocol;
+        fillMinesInfo();
         System.out.println("Инициализируюсь...");
     }
 
@@ -67,8 +66,8 @@ public class Intellect {
                 decreaseMineValue(claim.getTarget());
                 shouldSort++;
             }
-            if (shouldSort != 0)
-                sortMinesInfo();
+            //if (shouldSort != 0)
+                //sortMinesInfo();
         }
     }
 
@@ -109,9 +108,6 @@ public class Intellect {
 
     //Выбирает рандомную реку
     private River randomRiver() {
-
-
-
         Random random = new Random();
         List<River> neutralRivers = getNeutralRivers();
         River randomRiver = neutralRivers.get(random.nextInt(neutralRivers.size()));
@@ -124,11 +120,18 @@ public class Intellect {
 
         System.out.println("Пытаюсь выбрать реку...");
 
+        River choice = null;
+
         if (!minesInfo.isEmpty()) {
-            return claimFromMineInfo();
+            choice = claimFromMineInfo();
         } else {
-            return chooseNearestRiver();
+            choice = chooseNearestRiver();
+            if (choice == null){
+                choice = randomRiver();
+            }
         }
+
+        return choice;
     }
 
     //Метод возвращает первую попавшуюся нейтральную реку, прилежащую
@@ -205,11 +208,6 @@ public class Intellect {
 
     //Делает ход
     public void makeMove() {
-        //River choice = randomRiver(state.getRivers());
-        if (!init){
-            init = true;
-            fillMinesInfo();
-        }
         printMineInfo();
         River choice = chooseRiver();
         if (choice == null)
