@@ -129,11 +129,60 @@ public class Intellect {
         } else {
             choice = chooseNearestRiver();
             if (choice == null){
-                choice = randomRiver();
+                choice = tryToMakeBadThings();
+                if (choice == null)
+                    choice = randomRiver();
             }
         }
 
         return choice;
+    }
+
+    private River tryToMakeBadThings() {
+        River result = null;
+        int lastPoints = -1;
+        for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
+            System.out.println("Пытаюсь найти ближайшую");
+            if (river.getValue() == RiverState.Neutral) {
+                System.out.println("Пытаюсь проверить этих парней: " + river.getKey().component1() + "-" + river.getKey().component2());
+                byte nearestCode = checkIfmakingBad(river.getKey());
+                //строка выше проверяет является ли река прилежащий
+                //если код возврата 1 - значит река прилежит одной точкой
+                //если код возврата 2 - значит река прилежит двумя точками
+                if (nearestCode > 0){
+                    int points = -2;
+                    switch (nearestCode) {
+                    }
+                    if (points > lastPoints){
+                        lastPoints = points;
+                        result = river.getKey();
+                    }
+                }
+
+
+            }
+        }
+        return result;
+    }
+
+    private byte checkIfmakingBad(River key) {
+        byte result = 0;
+        boolean sourceIsNear = false;
+        boolean targetIsNear = false;
+        System.out.println("Перебираю все наши реки, пытясь найти лежащие рядом");
+        for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
+            if (river.getValue() == RiverState.Enemy) {
+                if (checkIfRiversAreNear(key, river.getKey()) == 1)
+                    sourceIsNear = true;
+                if (checkIfRiversAreNear(key, river.getKey()) == 2)
+                    targetIsNear = true;
+            }
+        }
+        if (sourceIsNear)
+            result++;
+        if (targetIsNear)
+            result++;
+        return result;
     }
 
     //Метод возвращает первую попавшуюся нейтральную реку, прилежащую
@@ -159,7 +208,7 @@ public class Intellect {
                         }
                         case 2: {
                             System.out.println("Код возврата был 2");
-                            points = 50;
+                            points = 90;
                             break;
                         }
                     }
@@ -233,8 +282,8 @@ public class Intellect {
     private River claimFromMineInfo() {
         System.out.println("У меня же есть список шахт!");
         int mineId = minesInfo.entrySet().iterator().next().getKey();
-        minesInfo.remove(mineId);
-        //decreaseMineValue(mineId);
+        //minesInfo.remove(mineId);
+        decreaseMineValue(mineId);
         return findRiver(mineId);
     }
 
