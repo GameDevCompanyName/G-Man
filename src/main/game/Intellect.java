@@ -16,11 +16,16 @@ public class Intellect {
     //затем выбирать, возле каких из них нам покупать реку
     private Map<Integer, Integer> minesInfo = new HashMap();
 
+    private Map<Integer, List<Integer>> minesVerticies = new HashMap();
+
     private River lastMove;
+
+    private Random randomizer;
 
     public Intellect(State state, Protocol protocol) {
         this.state = state;
         this.protocol = protocol;
+        this.randomizer = new Random();
         fillMinesInfo();
         System.out.println("Инициализируюсь...");
     }
@@ -32,6 +37,8 @@ public class Intellect {
         System.out.println("Заполняю информацию о шахтах...");
         for (Integer id : state.getMines()) {
             minesInfo.put(id, 0);
+            minesVerticies.put(id, new ArrayList<Integer>());
+            minesVerticies.get(id).add(id);
         }
         for (River river : state.getRivers().keySet()) {
             int source = river.component1();
@@ -91,7 +98,7 @@ public class Intellect {
     //равно нулю
     private void decreaseMineValue(int key) {
         minesInfo.replace(key, minesInfo.get(key) - 1);
-        if (minesInfo.get(key) == 0)
+        if (minesInfo.get(key) <= 0)
             minesInfo.remove(key);
     }
 
@@ -113,7 +120,6 @@ public class Intellect {
         Random random = new Random();
         List<River> neutralRivers = getNeutralRivers();
         River randomRiver = neutralRivers.get(random.nextInt(neutralRivers.size()));
-        System.out.println("Я не знаю, что ещё остаётся: беру реку " + randomRiver.component1() + "-" + randomRiver.component2());
         return randomRiver;
     }
 
@@ -122,7 +128,7 @@ public class Intellect {
 
         System.out.println("Пытаюсь выбрать реку...");
 
-        River choice = null;
+        River choice;
 
         if (!minesInfo.isEmpty()) {
             choice = claimFromMineInfo();
@@ -142,9 +148,9 @@ public class Intellect {
         River result = null;
         int lastPoints = -1;
         for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
-            System.out.println("Пытаюсь найти ближайшую");
+            System.out.println("Пытаюсь навредить!");
             if (river.getValue() == RiverState.Neutral) {
-                System.out.println("Пытаюсь проверить этих парней: " + river.getKey().component1() + "-" + river.getKey().component2());
+                //System.out.println("Пытаюсь проверить этих парней: " + river.getKey().component1() + "-" + river.getKey().component2());
                 byte nearestCode = checkIfmakingBad(river.getKey());
                 //строка выше проверяет является ли река прилежащий
                 //если код возврата 1 - значит река прилежит одной точкой
@@ -152,6 +158,12 @@ public class Intellect {
                 if (nearestCode > 0){
                     int points = -2;
                     switch (nearestCode) {
+                        case 1:
+                            points = 10;
+                            break;
+                        case 2:
+                            points = 15;
+                            break;
                     }
                     if (points > lastPoints){
                         lastPoints = points;
@@ -169,7 +181,6 @@ public class Intellect {
         byte result = 0;
         boolean sourceIsNear = false;
         boolean targetIsNear = false;
-        System.out.println("Перебираю все наши реки, пытясь найти лежащие рядом");
         for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
             if (river.getValue() == RiverState.Enemy) {
                 if (checkIfRiversAreNear(key, river.getKey()) == 1)
@@ -191,9 +202,7 @@ public class Intellect {
         River result = null;
         int lastPoints = -1;
         for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
-            System.out.println("Пытаюсь найти ближайшую");
             if (river.getValue() == RiverState.Neutral) {
-                System.out.println("Пытаюсь проверить этих парней: " + river.getKey().component1() + "-" + river.getKey().component2());
                 byte nearestCode = checkIfNearest(river.getKey());
                 //строка выше проверяет является ли река прилежащий
                 //если код возврата 1 - значит река прилежит одной точкой
@@ -202,18 +211,16 @@ public class Intellect {
                     int points = -2;
                     switch (nearestCode) {
                         case 1: {
-                            System.out.println("Код возврата был 1");
                             points = 100;
                             break;
                         }
                         case 2: {
-                            System.out.println("Код возврата был 2");
-                            points = 90;
+                            points = 100;
                             break;
                         }
                     }
                     if (checkIfRiversAreNear(river.getKey(), lastMove) > 0)
-                        points += 25;
+                        points += - 5 + randomizer.nextInt(20);
                     if (points > lastPoints){
                         lastPoints = points;
                         result = river.getKey();
@@ -244,7 +251,6 @@ public class Intellect {
         byte result = 0;
         boolean sourceIsNear = false;
         boolean targetIsNear = false;
-        System.out.println("Перебираю все наши реки, пытясь найти лежащие рядом");
         for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
             if (river.getValue() == RiverState.Our) {
                     if (checkIfRiversAreNear(key, river.getKey()) == 1)
@@ -266,12 +272,10 @@ public class Intellect {
 
         if (river1.getSource() == river2.component1() ||
                 river1.getSource() == river2.component2()) {
-            System.out.println("Нашёл лежащую рядом!");
             result = 1;
         }
         if (river1.getTarget() == river2.component1() ||
                 river1.getTarget() == river2.component2()) {
-            System.out.println("Нашёл лежащую рядом!");
             result = 2;
         }
 
@@ -284,23 +288,26 @@ public class Intellect {
         int mineId = minesInfo.entrySet().iterator().next().getKey();
         //minesInfo.remove(mineId);
         decreaseMineValue(mineId);
+
+        //ОПАСНО! Пытаюсь ДВАЖДЫ уменьшить переменную с количеством рек возле
+        //шахты, чтобы бот перестал туда ходить
+        if (minesInfo.containsKey(mineId))
+            decreaseMineValue(mineId);
+
+
+
         return findRiver(mineId);
     }
 
     //Найти реку по ID
     private River findRiver(int mineId) {
-        System.out.println("Попробую поискать реку возле шахты " + mineId);
         River result = null;
         for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
-            System.out.println("Пытаюсь проверить эту реку на нейтральность:" + river.getKey().component1() + "-" + river.getKey().component2());
             if (river.getValue() == RiverState.Neutral) {
-                System.out.println("Пытаюсь проверить этих парней:" + river.getKey().component1() + "-" + river.getKey().component2());
                 if (river.getKey().component1() == mineId || river.getKey().component2() == mineId){
                     result = river.getKey();
-                    System.out.println("Нашёл ключ! + " + river.getKey().component1() + "-" + river.getKey().component2());
                     return result;
                 }
-                System.out.println("Пытаюсь найти реку, сейчас: " + result);
             }
         }
         return result;
@@ -309,15 +316,54 @@ public class Intellect {
     //Делает ход
     public void makeMove() {
         printMineInfo();
+        printMineVerticies();
         River choice = chooseRiver();
         if (choice == null)
             protocol.passMove();
         else {
             lastMove = choice;
+            checkIfCreatingConnection(choice);
+            System.out.println("Покупаю реку " + choice.getTarget() + "-" + choice.getSource());
             protocol.claimMove(choice.getSource(), choice.getTarget());
         }
 
         System.out.println("Я походил. Не бей по лицу.");
+    }
+
+    private void checkIfCreatingConnection(River choice) {
+        int target = choice.getTarget();
+        int source = choice.getSource();
+
+        Integer targetKey = null;
+        Integer sourceKey = null;
+        for (Map.Entry<Integer, List<Integer>> obj: minesVerticies.entrySet()){
+            for (Integer id: obj.getValue()){
+                if (id == target)
+                    targetKey = obj.getKey();
+                if (id == source)
+                    sourceKey = obj.getKey();
+                if (sourceKey != null && targetKey != null)
+                    break;
+            }
+            if (sourceKey != null && targetKey != null)
+                break;
+        }
+
+        if (targetKey == sourceKey)
+            return;
+
+        if (targetKey != null && sourceKey == null){
+            minesVerticies.get(targetKey).add(source);
+            return;
+        }
+
+        if (targetKey == null){
+            minesVerticies.get(sourceKey).add(target);
+            return;
+        }
+
+        minesVerticies.get(targetKey).addAll(minesVerticies.get(sourceKey));
+        minesVerticies.remove(sourceKey);
     }
 
     private void printMineInfo() {
@@ -326,6 +372,18 @@ public class Intellect {
             System.out.println("Шахта: " + mine.getKey() + ", Рек: " + mine.getValue());
         }
         System.out.println("-----");
+    }
+
+    private void printMineVerticies() {
+        System.out.println("+++++");
+        for (Map.Entry<Integer, List<Integer>> obj: minesVerticies.entrySet()){
+            System.out.print("Шахта: " + obj.getKey() + ", Города:");
+            for (Integer integer: obj.getValue()){
+                System.out.print(" " + integer);
+            }
+            System.out.println();
+        }
+        System.out.println("+++++ ");
     }
 
 
