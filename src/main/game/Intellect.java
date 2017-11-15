@@ -16,6 +16,8 @@ public class Intellect {
     //затем выбирать, возле каких из них нам покупать реку
     private Map<Integer, Integer> minesInfo = new HashMap();
 
+    private River lastMove;
+
     public Intellect(State state, Protocol protocol) {
         this.state = state;
         this.protocol = protocol;
@@ -138,44 +140,93 @@ public class Intellect {
     //любой УЖЕ принадлежащей нам
     private River chooseNearestRiver() {
         River result = null;
+        int lastPoints = -1;
         for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
             System.out.println("Пытаюсь найти ближайшую");
             if (river.getValue() == RiverState.Neutral) {
-                System.out.println("Пытаюсь проверить этих парней:" + river.getKey().component1() + "-" + river.getKey().component2());
-                if (checkIfNearest(river.getKey())){
-                    result = river.getKey();
-                    return result;
+                System.out.println("Пытаюсь проверить этих парней: " + river.getKey().component1() + "-" + river.getKey().component2());
+                byte nearestCode = checkIfNearest(river.getKey());
+                //строка выше проверяет является ли река прилежащий
+                //если код возврата 1 - значит река прилежит одной точкой
+                //если код возврата 2 - значит река прилежит двумя точками
+                if (nearestCode > 0){
+                    int points = -2;
+                    switch (nearestCode) {
+                        case 1: {
+                            System.out.println("Код возврата был 1");
+                            points = 100;
+                            break;
+                        }
+                        case 2: {
+                            System.out.println("Код возврата был 2");
+                            points = 50;
+                            break;
+                        }
+                    }
+                    if (checkIfRiversAreNear(river.getKey(), lastMove) > 0)
+                        points += 25;
+                    if (points > lastPoints){
+                        lastPoints = points;
+                        result = river.getKey();
+                    }
                 }
+
 
             }
         }
         return result;
     }
 
+    private int checkPoints(int source) {
+        int points = 100;
+        /*Set ourRivers = state.getRivers()
+                                .entrySet()
+                                .stream()
+                                .filter(p -> p.getValue() == RiverState.Our)
+                                .collect(Collectors.toSet());
+        ourRivers.
+        */
+        return points;
+    }
+
     //Получает на вход нейтральную реку и сравнивает со всеми НАШИМИ
     //реками
-    private boolean checkIfNearest(River key) {
-        System.out.println("Перебираю все наши реки, пытясь найти лежащую рядом");
+    private byte checkIfNearest(River key) {
+        byte result = 0;
+        boolean sourceIsNear = false;
+        boolean targetIsNear = false;
+        System.out.println("Перебираю все наши реки, пытясь найти лежащие рядом");
         for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
             if (river.getValue() == RiverState.Our) {
-                if (checkIfRiversAreNear(key, river.getKey()))
-                    return true;
+                    if (checkIfRiversAreNear(key, river.getKey()) == 1)
+                        sourceIsNear = true;
+                    if (checkIfRiversAreNear(key, river.getKey()) == 2)
+                        targetIsNear = true;
             }
         }
-        System.out.println("Не нашёл лежащей рядом!");
-        return false;
+        if (sourceIsNear)
+            result++;
+        if (targetIsNear)
+            result++;
+        return result;
     }
 
     //Проверяет прилежат ли реки друг к другу
-    private boolean checkIfRiversAreNear(River river1, River river2) {
-        if (river1.component1() == river2.component1() ||
-                river1.component1() == river2.component2() ||
-                river1.component2() == river2.component1() ||
-                river1.component2() == river2.component2()) {
+    private byte checkIfRiversAreNear(River river1, River river2) {
+        byte result = 0;
+
+        if (river1.getSource() == river2.component1() ||
+                river1.getSource() == river2.component2()) {
             System.out.println("Нашёл лежащую рядом!");
-            return true;
+            result = 1;
         }
-        return false;
+        if (river1.getTarget() == river2.component1() ||
+                river1.getTarget() == river2.component2()) {
+            System.out.println("Нашёл лежащую рядом!");
+            result = 2;
+        }
+
+        return result;
     }
 
     //Выбор реки исходя из наших знаний о шахтах
@@ -212,8 +263,11 @@ public class Intellect {
         River choice = chooseRiver();
         if (choice == null)
             protocol.passMove();
-        else
+        else {
+            lastMove = choice;
             protocol.claimMove(choice.getSource(), choice.getTarget());
+        }
+
         System.out.println("Я походил. Не бей по лицу.");
     }
 
