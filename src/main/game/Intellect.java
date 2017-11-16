@@ -18,6 +18,8 @@ public class Intellect {
 
     private Map<Integer, List<Integer>> minesVerticies = new HashMap();
 
+    private Map<Integer, Integer> citiesCosts = new HashMap();
+
     private River lastMove;
 
     private Random randomizer;
@@ -27,7 +29,45 @@ public class Intellect {
         this.protocol = protocol;
         this.randomizer = new Random();
         fillMinesInfo();
+        fillCitiesCosts();
         System.out.println("Инициализируюсь...");
+    }
+
+    private void fillCitiesCosts() {
+        for (Integer mine: state.getMines()){
+            calculateCityCosts(mine);
+        }
+    }
+
+    private void calculateCityCosts(Integer mine) {
+        Set<Integer> visited = new HashSet<>();
+        Queue<Integer> toVisit = new ArrayDeque<>();
+        toVisit.add(mine);
+        int count = 0;
+        while (!toVisit.isEmpty()){
+            int currentId = toVisit.poll();
+            visited.add(currentId);
+            if (citiesCosts.containsKey(currentId))
+                citiesCosts.replace(currentId, citiesCosts.get(currentId) + count*count);
+            else
+                citiesCosts.put(currentId, count*count);
+            for (int neighbour: getNeighbours(currentId, visited)){
+                toVisit.add(neighbour);
+            }
+        }
+    }
+
+    private List<Integer> getNeighbours(int currentId, Set<Integer> visited) {
+        List<Integer> neighbours = new LinkedList<>();
+        for (River river: state.getRivers().keySet()){
+            if (river.getSource() == currentId && !visited.contains(river.getTarget())){
+                neighbours.add(river.getTarget());
+            }
+            if (river.getTarget() == currentId && !visited.contains(river.getSource())){
+                neighbours.add(river.getSource());
+            }
+        }
+        return neighbours;
     }
 
     //Здесь мы инициализируем нашу таблицу с шахтами, проходясь
@@ -211,18 +251,22 @@ public class Intellect {
                     int points = -2;
                     switch (nearestCode) {
                         case 1: {
-                            points = 100;
+                            points += citiesCosts.get(river.getKey().getSource());
+                            points += citiesCosts.get(river.getKey().getTarget());
+                            points += 100;
                             break;
                         }
                         case 2: {
-                            points = 50;
+                            points += 50;
                             break;
                         }
                     }
+
+
                     if (checkIfCreatingConnection(river.getKey(), false))
                         points += 100000;
                     if (checkIfRiversAreNear(river.getKey(), lastMove) > 0)
-                        points += - 5 + randomizer.nextInt(20);
+                        points += - 3 + randomizer.nextInt(20);
                     if (points > lastPoints){
                         lastPoints = points;
                         result = river.getKey();
