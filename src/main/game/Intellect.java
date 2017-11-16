@@ -215,10 +215,12 @@ public class Intellect {
                             break;
                         }
                         case 2: {
-                            points = 100;
+                            points = 50;
                             break;
                         }
                     }
+                    if (checkIfCreatingConnection(river.getKey(), false))
+                        points += 100000;
                     if (checkIfRiversAreNear(river.getKey(), lastMove) > 0)
                         points += - 5 + randomizer.nextInt(20);
                     if (points > lastPoints){
@@ -293,6 +295,8 @@ public class Intellect {
         //шахты, чтобы бот перестал туда ходить
         if (minesInfo.containsKey(mineId))
             decreaseMineValue(mineId);
+        if (minesInfo.containsKey(mineId))
+            decreaseMineValue(mineId);
 
 
 
@@ -315,22 +319,22 @@ public class Intellect {
 
     //Делает ход
     public void makeMove() {
-        printMineInfo();
-        printMineVerticies();
+        //printMineInfo();
+        //printMineVerticies();
         River choice = chooseRiver();
         if (choice == null)
             protocol.passMove();
         else {
             lastMove = choice;
-            checkIfCreatingConnection(choice);
+            checkIfCreatingConnection(choice, true);
             System.out.println("Покупаю реку " + choice.getTarget() + "-" + choice.getSource());
             protocol.claimMove(choice.getSource(), choice.getTarget());
         }
 
-        System.out.println("Я походил. Не бей по лицу.");
+        //System.out.println("Я походил. Не бей по лицу.");
     }
 
-    private void checkIfCreatingConnection(River choice) {
+    private boolean checkIfCreatingConnection(River choice, boolean shouldChangeInfo) {
         int target = choice.getTarget();
         int source = choice.getSource();
 
@@ -350,20 +354,25 @@ public class Intellect {
         }
 
         if (targetKey == sourceKey)
-            return;
+            return false;
 
         if (targetKey != null && sourceKey == null){
-            minesVerticies.get(targetKey).add(source);
-            return;
+            if (shouldChangeInfo)
+                minesVerticies.get(targetKey).add(source);
+            return false;
         }
 
         if (targetKey == null){
-            minesVerticies.get(sourceKey).add(target);
-            return;
+            if (shouldChangeInfo)
+                minesVerticies.get(sourceKey).add(target);
+            return false;
         }
 
-        minesVerticies.get(targetKey).addAll(minesVerticies.get(sourceKey));
-        minesVerticies.remove(sourceKey);
+        if (shouldChangeInfo){
+            minesVerticies.get(targetKey).addAll(minesVerticies.get(sourceKey));
+            minesVerticies.remove(sourceKey);
+        }
+        return true;
     }
 
     private void printMineInfo() {
