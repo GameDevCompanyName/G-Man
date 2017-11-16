@@ -26,12 +26,12 @@ fun main(args: Array<String>) {
 
     // Состояние игрового поля
     val gameState = State()
-    // Джо очень умный чувак, вот его ум
-    val intellect = Intellect(gameState, protocol)
 
     protocol.handShake("G-man")
     val setupData = protocol.setup()
     gameState.init(setupData)
+
+    val intellect = Intellect(gameState, protocol)
 
     println("Received id = ${setupData.punter}")
 
@@ -53,7 +53,10 @@ fun main(args: Array<String>) {
                 for(move in message.move.moves) {
                     when(move) {
                         is PassMove -> {}
-                        is ClaimMove -> gameState.update(move.claim)
+                        is ClaimMove -> {
+                            gameState.update(move.claim)
+                            intellect.update(move.claim)
+                        }
                     }
                 }
             }
