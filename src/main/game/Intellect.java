@@ -257,7 +257,6 @@ public class Intellect {
                             break;
                         }
                         case 2: {
-                            points *= 3;
                             break;
                         }
                     }
@@ -266,7 +265,7 @@ public class Intellect {
                     if (checkIfCreatingConnection(river.getKey(), false))
                         points += 1000000;
                     if (checkIfRiversAreNear(river.getKey(), lastMove) > 0)
-                        points += - 3 + randomizer.nextInt(20);
+                        points *= 2;
                     if (points > lastPoints){
                         lastPoints = points;
                         result = river.getKey();
