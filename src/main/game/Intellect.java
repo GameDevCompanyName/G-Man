@@ -249,22 +249,22 @@ public class Intellect {
                 //если код возврата 2 - значит река прилежит двумя точками
                 if (nearestCode > 0){
                     int points = -2;
+                    points += citiesCosts.get(river.getKey().getSource());
+                    points += citiesCosts.get(river.getKey().getTarget());
                     switch (nearestCode) {
                         case 1: {
-                            points += citiesCosts.get(river.getKey().getSource());
-                            points += citiesCosts.get(river.getKey().getTarget());
-                            points += 100;
+                            points *= 5;
                             break;
                         }
                         case 2: {
-                            points += 50;
+                            points *= 3;
                             break;
                         }
                     }
 
 
                     if (checkIfCreatingConnection(river.getKey(), false))
-                        points += 100000;
+                        points += 1000000;
                     if (checkIfRiversAreNear(river.getKey(), lastMove) > 0)
                         points += - 3 + randomizer.nextInt(20);
                     if (points > lastPoints){
