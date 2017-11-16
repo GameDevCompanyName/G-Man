@@ -248,9 +248,17 @@ public class Intellect {
                 //если код возврата 1 - значит река прилежит одной точкой
                 //если код возврата 2 - значит река прилежит двумя точками
                 if (nearestCode > 0){
+
                     int points = -2;
-                    points += citiesCosts.get(river.getKey().getSource());
-                    points += citiesCosts.get(river.getKey().getTarget());
+
+                    Integer citiesCostsPoints1 = citiesCosts.get(river.getKey().getSource());
+                    if (citiesCostsPoints1 != null)
+                        points += citiesCostsPoints1;
+
+                    Integer citiesCostsPoints2 = citiesCosts.get(river.getKey().getTarget());
+                    if (citiesCostsPoints2 != null)
+                        points += citiesCostsPoints2;
+
                     switch (nearestCode) {
                         case 1: {
                             points *= 5;
