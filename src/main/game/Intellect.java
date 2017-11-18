@@ -22,6 +22,8 @@ public class Intellect {
 
     private River lastMove;
 
+    private Deque<River> currentWay = new ArrayDeque<>();
+
     private Random randomizer;
 
     public Intellect(State state, Protocol protocol) {
@@ -30,6 +32,7 @@ public class Intellect {
         this.randomizer = new Random();
         fillMinesInfo();
         fillCitiesCosts();
+        printCitiesCosts();
         System.out.println("Инициализируюсь...");
     }
 
@@ -86,9 +89,6 @@ public class Intellect {
             int target = river.component2();
             checkKey(target);
         }
-        //Следующий кусок копипасты должен отсортировать нашу HashMap
-        //God bless StackOverflow
-        sortMinesInfo();
     }
 
     //Данный метод используется в fillMinesInfo() для проверки наличия
@@ -104,34 +104,17 @@ public class Intellect {
     //сообщения о совершённом ходе. Мы обновляем наши знания о шахтах и
     //реках рядом с ними.
     public void update(Claim claim) {
-        System.out.println("Узнал о том, что кто-то забрал мою реку!");
+        //System.out.println("Узнал о том, что кто-то забрал мою реку!");
         if (claim.getPunter() != state.getMyId()) {
-            byte shouldSort = 0;
             if (minesInfo.containsKey(claim.getSource())) {
                 decreaseMineValue(claim.getSource());
-                shouldSort++;
             }
             if (minesInfo.containsKey(claim.getTarget())) {
                 decreaseMineValue(claim.getTarget());
-                shouldSort++;
             }
             //if (shouldSort != 0)
                 //sortMinesInfo();
         }
-    }
-
-    //Сортировка нашей minesInfo после её изменения в update()
-    private void sortMinesInfo() {
-        System.out.println("Навожу порядок в списке шахт");
-        minesInfo.entrySet()
-                .stream()
-                .sorted(Map.Entry.comparingByValue())
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (e1, e2) -> e1,
-                        HashMap::new
-                ));
     }
 
     //Уменьшает значение в таблице по ключу и удаляет его, если оно стало
@@ -155,6 +138,94 @@ public class Intellect {
         return listOfRivers;
     }
 
+
+
+    private River tryToConnectMines(){
+        if (minesVerticies.size() < 2)
+            return null;
+
+        River result;
+
+        result = useCurrentWay();
+        if (result != null)
+            return result;
+
+        int idOfSource = getRandomNetDot();
+        findAWayToClosestMine(idOfSource);
+
+        return useCurrentWay();
+    }
+
+    private River useCurrentWay() {
+        if (currentWay.isEmpty())
+            return null;
+        River possibleResult = currentWay.getFirst();
+        if (state.getRivers().get(possibleResult) == RiverState.Neutral)
+            return possibleResult;
+        return null;
+    }
+
+
+
+    private void findAWayToClosestMine(int mine) {
+        if (!currentWay.isEmpty())
+            currentWay.clear();
+        HashMap<Integer, River> steps = new HashMap<>();
+        Queue<Integer> toVisit = new ArrayDeque<>();
+        steps.put(mine, null);
+        toVisit.add(mine);
+        while (!toVisit.isEmpty()){
+            int currentId = toVisit.poll();
+            if (state.getMines().contains(currentId) && checkIfDifferentSystem(currentId, mine)){
+                rememberTheWay(currentId, steps);
+                break;
+            }
+            checkId(currentId, steps, toVisit);
+        }
+
+    }
+
+    private void rememberTheWay(int id, HashMap<Integer, River> steps) {
+        int currentId = id;
+        River currentRiver = steps.get(currentId);
+        while (currentRiver != null) {
+            currentWay.addFirst(currentRiver);
+            currentId =
+                    currentId == currentRiver.getSource() ?
+                            currentRiver.getTarget() :
+                            currentRiver.getSource();
+            currentRiver = steps.get(currentId);
+        }
+    }
+
+    private void checkId(int currentId, HashMap<Integer, River> steps, Queue<Integer> toVisit) {
+        for (River neighbourRiver: getNeutralNeighbours(currentId)){
+            int neighbourId =
+                    currentId == neighbourRiver.getSource() ?
+                            neighbourRiver.getTarget() :
+                            neighbourRiver.getSource();
+            if (!steps.containsKey(neighbourId)){
+                toVisit.add(neighbourId);
+                steps.put(neighbourId, neighbourRiver);
+            }
+        }
+    }
+
+    private List<River> getNeutralNeighbours(int currentId) {
+        List<River> neighbours = new LinkedList<>();
+        for (River river: state.getRivers().keySet()){
+            if (state.getRivers().get(river) != RiverState.Neutral)
+                continue;
+            if (river.getSource() == currentId || river.getTarget() == currentId)
+                neighbours.add(river);
+        }
+        return neighbours;
+    }
+
+    private int getRandomNetDot() {
+        return minesVerticies.entrySet().iterator().next().getKey();
+    }
+
     //Выбирает рандомную реку
     private River randomRiver() {
         Random random = new Random();
@@ -166,18 +237,21 @@ public class Intellect {
     //Метод с основной логикой выбора реки
     private River chooseRiver() {
 
-        System.out.println("Пытаюсь выбрать реку...");
+        //System.out.println("Пытаюсь выбрать реку...");
 
         River choice;
 
         if (!minesInfo.isEmpty()) {
             choice = claimFromMineInfo();
         } else {
-            choice = chooseNearestRiver();
+            choice = tryToConnectMines();
             if (choice == null){
-                choice = tryToMakeBadThings();
-                if (choice == null)
-                    choice = randomRiver();
+                choice = chooseNearestRiver();
+                if (choice == null){
+                    choice = tryToMakeBadThings();
+                    if (choice == null)
+                        choice = randomRiver();
+                }
             }
         }
 
@@ -185,13 +259,13 @@ public class Intellect {
     }
 
     private River tryToMakeBadThings() {
+        //System.out.println("Пытаюсь навредить!");
         River result = null;
         int lastPoints = -1;
         for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
-            System.out.println("Пытаюсь навредить!");
             if (river.getValue() == RiverState.Neutral) {
                 //System.out.println("Пытаюсь проверить этих парней: " + river.getKey().component1() + "-" + river.getKey().component2());
-                byte nearestCode = checkIfmakingBad(river.getKey());
+                byte nearestCode = checkIfMakingBad(river.getKey());
                 //строка выше проверяет является ли река прилежащий
                 //если код возврата 1 - значит река прилежит одной точкой
                 //если код возврата 2 - значит река прилежит двумя точками
@@ -217,7 +291,7 @@ public class Intellect {
         return result;
     }
 
-    private byte checkIfmakingBad(River key) {
+    private byte checkIfMakingBad(River key) {
         byte result = 0;
         boolean sourceIsNear = false;
         boolean targetIsNear = false;
@@ -378,7 +452,7 @@ public class Intellect {
         else {
             lastMove = choice;
             checkIfCreatingConnection(choice, true);
-            System.out.println("Покупаю реку " + choice.getTarget() + "-" + choice.getSource());
+            //System.out.println("Покупаю реку " + choice.getTarget() + "-" + choice.getSource());
             protocol.claimMove(choice.getSource(), choice.getTarget());
         }
 
@@ -424,6 +498,35 @@ public class Intellect {
             minesVerticies.remove(sourceKey);
         }
         return true;
+    }
+
+    private boolean checkIfDifferentSystem(int source, int target){
+        Integer targetKey = null;
+        Integer sourceKey = null;
+        for (Map.Entry<Integer, List<Integer>> obj: minesVerticies.entrySet()){
+            for (Integer id: obj.getValue()){
+                if (id == target)
+                    targetKey = obj.getKey();
+                if (id == source)
+                    sourceKey = obj.getKey();
+                if (sourceKey != null && targetKey != null)
+                    break;
+            }
+            if (sourceKey != null && targetKey != null)
+                break;
+        }
+
+        if (targetKey == sourceKey)
+            return false;
+        else
+            return true;
+    }
+    private void printCitiesCosts() {
+        System.out.println("*******************");
+        for (Map.Entry<Integer, Integer> city: citiesCosts.entrySet()){
+            System.out.println(city.getKey() + ": " + city.getValue());
+        }
+        System.out.println("*******************");
     }
 
     private void printMineInfo() {
