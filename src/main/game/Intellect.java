@@ -18,7 +18,7 @@ public class Intellect {
 
     private Map<Integer, List<Integer>> minesVerticies = new HashMap();
 
-    private Map<Integer, Integer> citiesCosts = new HashMap();
+    private Map<Integer, Long> citiesCosts = new HashMap();
 
     private River lastMove;
 
@@ -46,7 +46,7 @@ public class Intellect {
         Set<Integer> visited = new HashSet<>();
         Queue<Integer> toVisit = new ArrayDeque<>();
         toVisit.add(mine);
-        int count = 0;
+        long count = 0L;
         while (!toVisit.isEmpty()){
             int currentId = toVisit.poll();
             visited.add(currentId);
@@ -57,6 +57,7 @@ public class Intellect {
             for (int neighbour: getNeighbours(currentId, visited)){
                 toVisit.add(neighbour);
             }
+            count++;
         }
     }
 
@@ -314,7 +315,7 @@ public class Intellect {
     //любой УЖЕ принадлежащей нам
     private River chooseNearestRiver() {
         River result = null;
-        int lastPoints = -1;
+        long lastPoints = -1;
         for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
             if (river.getValue() == RiverState.Neutral) {
                 byte nearestCode = checkIfNearest(river.getKey());
@@ -323,13 +324,13 @@ public class Intellect {
                 //если код возврата 2 - значит река прилежит двумя точками
                 if (nearestCode > 0){
 
-                    int points = -2;
+                    long points = -2;
 
-                    Integer citiesCostsPoints1 = citiesCosts.get(river.getKey().getSource());
+                    Long citiesCostsPoints1 = citiesCosts.get(river.getKey().getSource());
                     if (citiesCostsPoints1 != null)
                         points += citiesCostsPoints1;
 
-                    Integer citiesCostsPoints2 = citiesCosts.get(river.getKey().getTarget());
+                    Long citiesCostsPoints2 = citiesCosts.get(river.getKey().getTarget());
                     if (citiesCostsPoints2 != null)
                         points += citiesCostsPoints2;
 
@@ -521,12 +522,23 @@ public class Intellect {
         else
             return true;
     }
+
     private void printCitiesCosts() {
         System.out.println("*******************");
-        for (Map.Entry<Integer, Integer> city: citiesCosts.entrySet()){
+        for (Map.Entry<Integer, Long> city: citiesCosts.entrySet()){
             System.out.println(city.getKey() + ": " + city.getValue());
         }
         System.out.println("*******************");
+    }
+
+    private void printCurrentWay(){
+        System.out.println("№№№№№№№№№№№№№№№");
+        int count = 0;
+        for (River river: currentWay){
+            count++;
+            System.out.println(count + ": " + river.getSource() + "-" + river.getTarget());
+        }
+        System.out.println("№№№№№№№№№№№№№№№");
     }
 
     private void printMineInfo() {
