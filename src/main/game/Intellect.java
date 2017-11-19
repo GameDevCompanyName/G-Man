@@ -28,6 +28,7 @@ public class Intellect {
 
     private Random randomizer;
 
+    //Конструктор с инициализацией всех необходимых полей
     public Intellect(State state, Protocol protocol) {
         this.state = state;
         this.protocol = protocol;
@@ -39,26 +40,28 @@ public class Intellect {
         System.out.println("Инициализируюсь...");
     }
 
+    //Запускает метод вычисления перспективности городов от всех шахт
     private void fillCitiesCosts() {
         for (Integer mine: state.getMines()){
             calculateCityCosts(mine);
         }
     }
 
+    //Запускает поиск в ширину от
     private void calculateCityCosts(Integer mine) {
         Set<Integer> visited = new HashSet<>();
         Queue<Integer> toVisit = new ArrayDeque<>();
         toVisit.add(mine);
-        long count = 0L;
+        int count = 0;
         while (!toVisit.isEmpty()){
-            if (count == 10)
+            if (count == 200)
                 break;
             int currentId = toVisit.poll();
             visited.add(currentId);
             if (citiesCosts.containsKey(currentId))
-                citiesCosts.replace(currentId, citiesCosts.get(currentId) + count);
+                citiesCosts.replace(currentId, citiesCosts.get(currentId) + 1l);
             else
-                citiesCosts.put(currentId, count*count);
+                citiesCosts.put(currentId, 1l);
             for (int neighbour: getNeighbours(currentId, visited)){
                 toVisit.add(neighbour);
             }
@@ -168,27 +171,32 @@ public class Intellect {
         if (currentWay.isEmpty())
             return null;
         River possibleResult = currentWay.pollFirst();
-        if (state.getRivers().get(possibleResult) == RiverState.Neutral)
-            return possibleResult;
-        return null;
+        if (state.getRivers().get(possibleResult) != RiverState.Enemy){
+            if (state.getRivers().get(possibleResult) == RiverState.Our){
+                return useCurrentWay();
+            } else
+                return possibleResult;
+        } else
+            return null;
     }
 
     private void findAWayToClosestMine() {
-        Integer mine;
+        Integer startPoint;
         if (lastMove != null)
-            mine = lastMove.getSource();
+            startPoint = lastMove.getSource();
         else
-            mine = baseKey;
+            startPoint = baseKey;
         System.out.println("Пытаюсь найти кратчайший путь");
         if (!currentWay.isEmpty())
             currentWay.clear();
+
         HashMap<Integer, River> steps = new HashMap<>();
         Queue<Integer> toVisit = new ArrayDeque<>();
-        steps.put(mine, null);
-        toVisit.add(mine);
+        steps.put(startPoint, null);
+        toVisit.add(startPoint);
         while (!toVisit.isEmpty()){
             int currentId = toVisit.poll();
-            if (state.getMines().contains(currentId) && checkIfDifferentSystem(currentId, mine)){
+            if (checkIfDifferentSystem(currentId, startPoint)){
                 rememberTheWay(currentId, steps);
                 break;
             }
@@ -248,7 +256,6 @@ public class Intellect {
     //Метод с основной логикой выбора реки
     private River chooseRiver() {
 
-        //System.out.println("Пытаюсь выбрать реку...");
 
         River choice;
 
@@ -324,6 +331,7 @@ public class Intellect {
     //Метод возвращает первую попавшуюся нейтральную реку, прилежащую
     //любой УЖЕ принадлежащей нам
     private River chooseNearestRiver() {
+        System.out.println("Пытаюсь найти ближайшего");
         River result = null;
         long lastPoints = -1;
         for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
@@ -334,20 +342,20 @@ public class Intellect {
                 //если код возврата 2 - значит река прилежит двумя точками
                 if (nearestCode > 0){
 
-                    long points = -2;
+                    long points = -1;
 
                     Long citiesCostsPoints1 = citiesCosts.get(river.getKey().getSource());
                     if (citiesCostsPoints1 != null){
                         if (citiesCostsPoints1 == 0)
-                            points = Long.MAX_VALUE - 1;
+                            points += 20;
                         else
-                            points += citiesCostsPoints1;
+                            points += citiesCostsPoints1 * 5;
                     }
 
                     Long citiesCostsPoints2 = citiesCosts.get(river.getKey().getTarget());
                     if (citiesCostsPoints2 != null){
                         if (citiesCostsPoints2 == 0)
-                            points = Long.MAX_VALUE - 1;
+                            points = Long.MAX_VALUE / 2;
                         else
                             points += citiesCostsPoints2;
                     }
@@ -364,8 +372,8 @@ public class Intellect {
                         }
                     }
 
-                    //if (checkIfRiversAreNear(river.getKey(), lastMove) > 0)
-                     //   points *= 2;
+                    if (checkIfRiversAreNear(river.getKey(), lastMove) > 0)
+                        points += 50;
 
                     if (checkIfCreatingConnection(river.getKey(), false))
                         points = Long.MAX_VALUE - 1;
@@ -380,18 +388,6 @@ public class Intellect {
             }
         }
         return result;
-    }
-
-    private int checkPoints(int source) {
-        int points = 100;
-        /*Set ourRivers = state.getRivers()
-                                .entrySet()
-                                .stream()
-                                .filter(p -> p.getValue() == RiverState.Our)
-                                .collect(Collectors.toSet());
-        ourRivers.
-        */
-        return points;
     }
 
     //Получает на вход нейтральную реку и сравнивает со всеми НАШИМИ
@@ -436,18 +432,6 @@ public class Intellect {
         System.out.println("У меня же есть список шахт!");
         int mineId = minesInfo.entrySet().iterator().next().getKey();
         minesInfo.remove(mineId);
-        //decreaseMineValue(mineId);
-
-        //ОПАСНО! Пытаюсь ДВАЖДЫ уменьшить переменную с количеством рек возле
-        //шахты, чтобы бот перестал туда ходить
-        /*
-        if (minesInfo.containsKey(mineId))
-            decreaseMineValue(mineId);
-        if (minesInfo.containsKey(mineId))
-            decreaseMineValue(mineId);
-            */
-
-
 
         return findRiver(mineId);
     }
