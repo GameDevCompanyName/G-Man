@@ -255,8 +255,6 @@ public class Intellect {
 
     //Метод с основной логикой выбора реки
     private River chooseRiver() {
-
-
         River choice;
 
         if (!minesInfo.isEmpty()) {
@@ -342,20 +340,20 @@ public class Intellect {
                 //если код возврата 2 - значит река прилежит двумя точками
                 if (nearestCode > 0){
 
-                    long points = -1;
+                    int points = -1;
 
                     Long citiesCostsPoints1 = citiesCosts.get(river.getKey().getSource());
                     if (citiesCostsPoints1 != null){
                         if (citiesCostsPoints1 == 0)
-                            points += 20;
+                            points += 50;
                         else
-                            points += citiesCostsPoints1 * 5;
+                            points += citiesCostsPoints1;
                     }
 
                     Long citiesCostsPoints2 = citiesCosts.get(river.getKey().getTarget());
                     if (citiesCostsPoints2 != null){
                         if (citiesCostsPoints2 == 0)
-                            points = Long.MAX_VALUE / 2;
+                            points *= 2;
                         else
                             points += citiesCostsPoints2;
                     }
@@ -376,7 +374,7 @@ public class Intellect {
                         points += 50;
 
                     if (checkIfCreatingConnection(river.getKey(), false))
-                        points = Long.MAX_VALUE - 1;
+                        points = Integer.MAX_VALUE - 1;
 
                     if (points > lastPoints){
                         lastPoints = points;
@@ -521,14 +519,17 @@ public class Intellect {
                 if (sourceKey != null && targetKey != null)
                     break;
             }
-            if (sourceKey != null && targetKey != null)
-                break;
         }
 
         if (targetKey == sourceKey)
             return false;
-        else
-            return true;
+        else {
+            if (targetKey != null && sourceKey != null)
+                return true;
+            else
+                return false;
+        }
+
     }
 
     private void printCitiesCosts() {
