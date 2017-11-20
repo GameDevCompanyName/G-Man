@@ -194,13 +194,17 @@ public class Intellect {
         Queue<Integer> toVisit = new ArrayDeque<>();
         steps.put(startPoint, null);
         toVisit.add(startPoint);
+        int count = 0;
         while (!toVisit.isEmpty()){
+            if (count > 300)
+                return;
             int currentId = toVisit.poll();
             if (checkIfDifferentSystem(currentId, startPoint)){
                 rememberTheWay(currentId, steps);
                 break;
             }
             checkId(currentId, steps, toVisit);
+            count++;
         }
 
     }
