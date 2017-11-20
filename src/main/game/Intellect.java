@@ -345,7 +345,7 @@ public class Intellect {
                     Long citiesCostsPoints1 = citiesCosts.get(river.getKey().getSource());
                     if (citiesCostsPoints1 != null){
                         if (citiesCostsPoints1 == 0)
-                            points += 50;
+                            points += 25;
                         else
                             points += citiesCostsPoints1;
                     }
@@ -353,7 +353,7 @@ public class Intellect {
                     Long citiesCostsPoints2 = citiesCosts.get(river.getKey().getTarget());
                     if (citiesCostsPoints2 != null){
                         if (citiesCostsPoints2 == 0)
-                            points *= 2;
+                            points += 25;
                         else
                             points += citiesCostsPoints2;
                     }
@@ -365,13 +365,13 @@ public class Intellect {
                             break;
                         }
                         case 2: {
-                            points = 5;
+                            points = -5;
                             break;
                         }
                     }
 
                     if (checkIfRiversAreNear(river.getKey(), lastMove) > 0)
-                        points += 50;
+                        points += 10;
 
                     if (checkIfCreatingConnection(river.getKey(), false))
                         points = Integer.MAX_VALUE - 1;
