@@ -22,6 +22,9 @@ public class Intellect {
     private Map<Integer, Long> citiesCosts = new HashMap();
 
     private River lastMove;
+    private boolean routeTick = false;
+    private Integer routeStart = null;
+    private Integer routeEnd = null;
 
     private Deque<River> currentWay = new ArrayDeque<>();
     private int baseKey;
@@ -168,9 +171,20 @@ public class Intellect {
     }
 
     private River useCurrentWay() {
+
         if (currentWay.isEmpty())
             return null;
-        River possibleResult = currentWay.pollFirst();
+
+        River possibleResult;
+
+        if (routeTick){
+            possibleResult = currentWay.pollFirst();
+            routeTick = false;
+        } else {
+            possibleResult = currentWay.pollLast();
+            routeTick = true;
+        }
+
         if (state.getRivers().get(possibleResult) != RiverState.Enemy){
             if (state.getRivers().get(possibleResult) == RiverState.Our){
                 return useCurrentWay();
@@ -182,9 +196,12 @@ public class Intellect {
 
     private void findAWayToClosestMine() {
         Integer startPoint;
-        if (lastMove != null)
-            startPoint = lastMove.getSource();
-        else
+        if (lastMove != null){
+            if (checkIfOurCity(lastMove.getTarget()))
+                startPoint = lastMove.getTarget();
+            else
+                startPoint = lastMove.getSource();
+        } else
             startPoint = baseKey;
         System.out.println("Пытаюсь найти кратчайший путь");
         if (!currentWay.isEmpty())
@@ -207,6 +224,16 @@ public class Intellect {
             count++;
         }
 
+    }
+
+    private boolean checkIfOurCity(int city) {
+        for (List<Integer> system: minesVerticies.values()){
+            for (Integer id: system){
+                if (id == city)
+                    return true;
+            }
+        }
+        return false;
     }
 
     private void rememberTheWay(int id, HashMap<Integer, River> steps) {
@@ -243,10 +270,6 @@ public class Intellect {
                 neighbours.add(river);
         }
         return neighbours;
-    }
-
-    private int getRandomNetDot() {
-        return minesVerticies.entrySet().iterator().next().getKey();
     }
 
     //Выбирает рандомную реку
@@ -454,10 +477,14 @@ public class Intellect {
 
     //Делает ход
     public void makeMove() {
-        printCurrentWay();
+
+        if (!currentWay.isEmpty())
+            printCurrentWay();
         //printMineInfo();
         //printMineVerticies();
+
         River choice = chooseRiver();
+
         if (choice == null)
             protocol.passMove();
         else {
