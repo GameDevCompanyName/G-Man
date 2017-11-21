@@ -21,13 +21,17 @@ public class Intellect {
 
     private Map<Integer, Long> citiesCosts = new HashMap();
 
+    private Deque<River> currentWay = new ArrayDeque<>();
+    private int baseKey;
+
     private River lastMove;
+    private int lastSystem = baseKey;
+    private boolean costsCalculated = true;
+
     private boolean routeTick = false;
     private Integer routeStart = null;
     private Integer routeEnd = null;
 
-    private Deque<River> currentWay = new ArrayDeque<>();
-    private int baseKey;
 
     private Random randomizer;
 
@@ -45,9 +49,7 @@ public class Intellect {
 
     //Запускает метод вычисления перспективности городов от всех шахт
     private void fillCitiesCosts() {
-        for (Integer mine: state.getMines()){
-            calculateCityCosts(mine);
-        }
+        calculateCityCosts(baseKey);
     }
 
     //Запускает поиск в ширину от
@@ -57,19 +59,17 @@ public class Intellect {
         toVisit.add(mine);
         int count = 0;
         while (!toVisit.isEmpty()){
-            if (count == 200)
+            if (count == 1500)
                 break;
             int currentId = toVisit.poll();
             visited.add(currentId);
-            if (citiesCosts.containsKey(currentId))
-                citiesCosts.replace(currentId, citiesCosts.get(currentId) + 1l);
-            else
-                citiesCosts.put(currentId, 1l);
+            citiesCosts.put(currentId, (long) Math.sqrt(Math.sqrt(Math.pow((double) count, 3.0))));
             for (int neighbour: getNeighbours(currentId, visited)){
                 toVisit.add(neighbour);
             }
             count++;
         }
+        costsCalculated = true;
     }
 
     private List<Integer> getNeighbours(int currentId, Set<Integer> visited) {
@@ -358,7 +358,7 @@ public class Intellect {
     private River chooseNearestRiver() {
         System.out.println("Пытаюсь найти ближайшего");
         River result = null;
-        long lastPoints = -1;
+        int lastPoints = -1;
         for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
             if (river.getValue() == RiverState.Neutral) {
                 byte nearestCode = checkIfNearest(river.getKey());
@@ -392,7 +392,7 @@ public class Intellect {
                             break;
                         }
                         case 2: {
-                            points = -5;
+                            points = Integer.MIN_VALUE + 1;
                             break;
                         }
                     }
@@ -400,7 +400,7 @@ public class Intellect {
                     if (checkIfRiversAreNear(river.getKey(), lastMove) > 0)
                         points += 10;
 
-                    if (checkIfCreatingConnection(river.getKey(), false))
+                    if (checkIfCreatingConnection(river.getKey(), false) == -123456)
                         points = Integer.MAX_VALUE - 1;
 
                     if (points > lastPoints){
@@ -485,19 +485,26 @@ public class Intellect {
 
         River choice = chooseRiver();
 
+
+
         if (choice == null)
             protocol.passMove();
         else {
+            int newSystem = checkIfCreatingConnection(choice, true);
             lastMove = choice;
-            checkIfCreatingConnection(choice, true);
-            //System.out.println("Покупаю реку " + choice.getTarget() + "-" + choice.getSource());
             protocol.claimMove(choice.getSource(), choice.getTarget());
+            if (newSystem > 0 && newSystem != lastSystem){
+                calculateCityCosts(newSystem);
+                lastSystem = newSystem;
+            }
         }
 
-        //System.out.println("Я походил. Не бей по лицу.");
     }
 
-    private boolean checkIfCreatingConnection(River choice, boolean shouldChangeInfo) {
+    //Если река соединяет две разные системы - возвращает "-123456"
+    //Если ни одна точка не принадлежит нашей системе, возвращает "-1"
+    //Если же только одна из точек принадлежит системе, вовзращается индекс системы
+    private int checkIfCreatingConnection(River choice, boolean shouldChangeInfo) {
         int target = choice.getTarget();
         int source = choice.getSource();
 
@@ -512,30 +519,32 @@ public class Intellect {
                 if (sourceKey != null && targetKey != null)
                     break;
             }
-            if (sourceKey != null && targetKey != null)
-                break;
         }
 
-        if (targetKey == sourceKey)
-            return false;
+        if (targetKey == null && sourceKey == null){
+            return -1;
+        }
+
+
 
         if (targetKey != null && sourceKey == null){
             if (shouldChangeInfo)
                 minesVerticies.get(targetKey).add(source);
-            return false;
+            return targetKey;
         }
 
         if (targetKey == null){
             if (shouldChangeInfo)
                 minesVerticies.get(sourceKey).add(target);
-            return false;
+            return sourceKey;
         }
 
         if (shouldChangeInfo){
             minesVerticies.get(targetKey).addAll(minesVerticies.get(sourceKey));
             minesVerticies.remove(sourceKey);
         }
-        return true;
+
+        return -123456;
     }
 
     private boolean checkIfDifferentSystem(int source, int target){
