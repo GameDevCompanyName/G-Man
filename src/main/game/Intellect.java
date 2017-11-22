@@ -398,6 +398,7 @@ public class Intellect {
                     switch (nearestCode) {
                         case 1: {
                             points += 100;
+                            break;
                         }
                         case 2: {
                             points = -1000;
