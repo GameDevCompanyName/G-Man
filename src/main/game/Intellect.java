@@ -8,7 +8,8 @@ import java.util.*;
 
 public class Intellect {
 
-    public static final boolean SHOULD_WRITE_DEBUG_LOG = false;
+    private long summaryTimeOfThinking = 0l;
+    private int moveCounter;
 
     private State state;
     private Protocol protocol;
@@ -18,6 +19,8 @@ public class Intellect {
     private Map<Integer, Integer> minesInfo = new HashMap();
 
     private Map<Integer, List<Integer>> minesVerticies = new HashMap();
+
+    private Map<Integer, List<River>> citiesNeighbours = new HashMap<>();
 
     private Map<Integer, Long> citiesCosts = new HashMap();
     private int maxCost = 0;
@@ -38,19 +41,46 @@ public class Intellect {
         this.state = state;
         this.protocol = protocol;
         this.randomizer = new Random();
-        fillMinesInfo();
-        fillCitiesCosts();
+        init();
         printCitiesCosts();
-        baseKey = (int) minesVerticies.keySet().toArray()[0];
+        baseKey = (int) minesVerticies.keySet().iterator().next();
         System.out.println("Инициализируюсь...");
     }
 
-    //Запускает метод вычисления перспективности городов от всех шахт
-    private void fillCitiesCosts() {
+    private void init() {
+
+        System.out.println("Заполняю информацию о шахтах...");
+        for (Integer id : state.getMines()) {
+            minesInfo.put(id, 0);
+            minesVerticies.put(id, new ArrayList<Integer>());
+            minesVerticies.get(id).add(id);
+        }
+        for (River river : state.getRivers().keySet()) {
+            addToNeighbourMap(river);
+            int source = river.component1();
+            checkKey(source);
+            int target = river.component2();
+            checkKey(target);
+        }
         calculateCityCosts(baseKey);
+
     }
 
-    //Запускает поиск в ширину от
+    private void addToNeighbourMap(River river) {
+
+        if (!citiesNeighbours.containsKey(river.getSource()))
+            citiesNeighbours.put(river.getSource(), new LinkedList<River>());
+
+        citiesNeighbours.get(river.getSource()).add(river);
+
+        if (!citiesNeighbours.containsKey(river.getTarget()))
+            citiesNeighbours.put(river.getTarget(), new LinkedList<River>());
+
+        citiesNeighbours.get(river.getTarget()).add(river);
+
+    }
+
+    //Запускает поиск в ширину от вершины и оценивает перспективность шахт (очень плохо)
     private void calculateCityCosts(Integer mine) {
         Set<Integer> visited = new HashSet<>();
         Queue<Integer> toVisit = new ArrayDeque<>();
@@ -62,8 +92,9 @@ public class Intellect {
             int currentId = toVisit.poll();
             visited.add(currentId);
             citiesCosts.put(currentId, (long) count);
-            for (int neighbour: getNeighbours(currentId, visited)){
-                toVisit.add(neighbour);
+            for (int neighbour: getNeighbours(currentId)){
+                if (!visited.contains(neighbour))
+                    toVisit.add(neighbour);
             }
             if (count > maxCost)
                 maxCost = count;
@@ -71,35 +102,30 @@ public class Intellect {
         }
     }
 
-    private List<Integer> getNeighbours(int currentId, Set<Integer> visited) {
+    private List<Integer> getNeighbours(int currentId) {
         List<Integer> neighbours = new LinkedList<>();
-        for (River river: state.getRivers().keySet()){
-            if (river.getSource() == currentId && !visited.contains(river.getTarget())){
-                neighbours.add(river.getTarget());
-            }
-            if (river.getTarget() == currentId && !visited.contains(river.getSource())){
+        List<River> rivers = citiesNeighbours.get(currentId);
+        for (River river: rivers){
+            if (river.getTarget() == currentId)
                 neighbours.add(river.getSource());
-            }
+            if (river.getSource() == currentId)
+                neighbours.add(river.getTarget());
         }
         return neighbours;
     }
 
-    //Здесь мы инициализируем нашу таблицу с шахтами, проходясь
-    //по всем рекам и считая, сколько рек находится возле каждой
-    //шахты.
-    private void fillMinesInfo() {
-        System.out.println("Заполняю информацию о шахтах...");
-        for (Integer id : state.getMines()) {
-            minesInfo.put(id, 0);
-            minesVerticies.put(id, new ArrayList<Integer>());
-            minesVerticies.get(id).add(id);
+    private List<River> getNeighbourRivers(int id, boolean notEnemyOnly) {
+
+        if (!notEnemyOnly)
+            return citiesNeighbours.get(id);
+
+        List<River> notEnemyRivers = new LinkedList<>();
+        for (River river: citiesNeighbours.get(id)){
+            if (state.getRivers().get(river) != RiverState.Enemy)
+                notEnemyRivers.add(river);
         }
-        for (River river : state.getRivers().keySet()) {
-            int source = river.component1();
-            checkKey(source);
-            int target = river.component2();
-            checkKey(target);
-        }
+
+        return notEnemyRivers;
     }
 
     //Данный метод используется в fillMinesInfo() для проверки наличия
@@ -216,7 +242,7 @@ public class Intellect {
         toVisit.add(startPoint);
         int count = 0;
         while (!toVisit.isEmpty()){
-            if (count > 300)
+            if (count > 350)
                 return;
             int currentId = toVisit.poll();
             if (checkIfDifferentSystem(currentId, startPoint)){
@@ -244,7 +270,7 @@ public class Intellect {
     }
 
     private void checkId(int currentId, HashMap<Integer, River> steps, Queue<Integer> toVisit) {
-        for (River neighbourRiver: getNeutralNeighbours(currentId)){
+        for (River neighbourRiver: getNotEnemyNeighbours(currentId)){
             int neighbourId =
                     currentId == neighbourRiver.getSource() ?
                             neighbourRiver.getTarget() :
@@ -275,13 +301,8 @@ public class Intellect {
 
 
 
-    private List<River> getNeutralNeighbours(int currentId) {
-        List<River> neighbours = new LinkedList<>();
-        for (River river: state.getRivers().keySet()){
-            if (state.getRivers().get(river) == RiverState.Neutral && river.getSource() == currentId || river.getTarget() == currentId)
-                neighbours.add(river);
-        }
-        return neighbours;
+    private List<River> getNotEnemyNeighbours(int currentId) {
+        return getNeighbourRivers(currentId, true);
     }
 
     //Выбирает рандомную реку
@@ -511,8 +532,18 @@ public class Intellect {
         }
 
         long finish = System.currentTimeMillis();
-        System.out.println("Я выполнялся: " + ((finish - start) / 1000.0) + "мс");
 
+        checkTheStatisticsBro(finish - start);
+        return;
+
+    }
+
+    private void checkTheStatisticsBro(long l) {
+        summaryTimeOfThinking += l;
+        moveCounter++;
+        System.out.println("Номер хода: " + moveCounter);
+        System.out.println("Время хода: " + l + "мс");
+        System.out.println("MidTime: " + summaryTimeOfThinking/moveCounter + "мс");
     }
 
     //Метод с основной логикой выбора реки
