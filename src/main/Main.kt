@@ -19,7 +19,7 @@ object Arguments {
 fun main(args: Array<String>) {
     Arguments.use(args)
 
-    println("G-man is already here...")
+    println("..............*nothing but silence*...............")
 
     // Протокол обмена с сервером
     val protocol = Protocol(Arguments.url, Arguments.port)
@@ -27,11 +27,11 @@ fun main(args: Array<String>) {
     // Состояние игрового поля
     val gameState = State()
 
-    protocol.handShake("G-man")
+    protocol.handShake("Gordon Freeman")
     val setupData = protocol.setup()
     gameState.init(setupData)
 
-    val intellect = Intellect(gameState, protocol)
+    val intellect = Intellect(gameState, protocol, setupData.punters)
 
     println("Received id = ${setupData.punter}")
 
@@ -41,13 +41,14 @@ fun main(args: Array<String>) {
         val message = protocol.serverMessage()
         when(message) {
             is GameResult -> {
-                println("We'll meet again...")
+                println(".........")
                 val myScore = message.stop.scores[protocol.myId]
                 println("Score: ${myScore.score}")
                 break@gameloop
             }
             is Timeout -> {
-                println("Your time is over...")
+                intellect.timeout()
+                println("Forget about freeman...")
             }
             is GameTurnMessage -> {
                 for(move in message.move.moves) {
