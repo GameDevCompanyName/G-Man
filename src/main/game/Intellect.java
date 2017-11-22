@@ -20,17 +20,15 @@ public class Intellect {
     private Map<Integer, List<Integer>> minesVerticies = new HashMap();
 
     private Map<Integer, Long> citiesCosts = new HashMap();
+    private int maxCost = 0;
 
     private Deque<River> currentWay = new ArrayDeque<>();
     private int baseKey;
 
     private River lastMove;
     private int lastSystem = baseKey;
-    private boolean costsCalculated = true;
 
     private boolean routeTick = false;
-    private Integer routeStart = null;
-    private Integer routeEnd = null;
 
 
     private Random randomizer;
@@ -63,13 +61,14 @@ public class Intellect {
                 break;
             int currentId = toVisit.poll();
             visited.add(currentId);
-            citiesCosts.put(currentId, (long) Math.sqrt(Math.sqrt(Math.pow((double) count, 3.0))));
+            citiesCosts.put(currentId, (long) count);
             for (int neighbour: getNeighbours(currentId, visited)){
                 toVisit.add(neighbour);
             }
+            if (count > maxCost)
+                maxCost = count;
             count++;
         }
-        costsCalculated = true;
     }
 
     private List<Integer> getNeighbours(int currentId, Set<Integer> visited) {
@@ -195,7 +194,9 @@ public class Intellect {
     }
 
     private void findAWayToClosestMine() {
+
         Integer startPoint;
+
         if (lastMove != null){
             if (checkIfOurCity(lastMove.getTarget()))
                 startPoint = lastMove.getTarget();
@@ -203,7 +204,9 @@ public class Intellect {
                 startPoint = lastMove.getSource();
         } else
             startPoint = baseKey;
+
         System.out.println("Пытаюсь найти кратчайший путь");
+
         if (!currentWay.isEmpty())
             currentWay.clear();
 
@@ -224,16 +227,6 @@ public class Intellect {
             count++;
         }
 
-    }
-
-    private boolean checkIfOurCity(int city) {
-        for (List<Integer> system: minesVerticies.values()){
-            for (Integer id: system){
-                if (id == city)
-                    return true;
-            }
-        }
-        return false;
     }
 
     private void rememberTheWay(int id, HashMap<Integer, River> steps) {
@@ -263,6 +256,25 @@ public class Intellect {
         }
     }
 
+
+
+
+    private boolean checkIfOurCity(int city) {
+        for (List<Integer> system: minesVerticies.values()){
+            for (Integer id: system){
+                if (id == city)
+                    return true;
+            }
+        }
+        return false;
+    }
+
+
+
+
+
+
+
     private List<River> getNeutralNeighbours(int currentId) {
         List<River> neighbours = new LinkedList<>();
         for (River river: state.getRivers().keySet()){
@@ -280,26 +292,10 @@ public class Intellect {
         return randomRiver;
     }
 
-    //Метод с основной логикой выбора реки
-    private River chooseRiver() {
-        River choice;
 
-        if (!minesInfo.isEmpty()) {
-            choice = claimFromMineInfo();
-        } else {
-            choice = tryToConnectMines();
-            if (choice == null){
-                choice = chooseNearestRiver();
-                if (choice == null){
-                    choice = tryToMakeBadThings();
-                    if (choice == null)
-                        choice = randomRiver();
-                }
-            }
-        }
 
-        return choice;
-    }
+
+
 
     private River tryToMakeBadThings() {
         //System.out.println("Пытаюсь навредить!");
@@ -353,6 +349,10 @@ public class Intellect {
         return result;
     }
 
+
+
+
+
     //Метод возвращает первую попавшуюся нейтральную реку, прилежащую
     //любой УЖЕ принадлежащей нам
     private River chooseNearestRiver() {
@@ -372,7 +372,7 @@ public class Intellect {
                     Long citiesCostsPoints1 = citiesCosts.get(river.getKey().getSource());
                     if (citiesCostsPoints1 != null){
                         if (citiesCostsPoints1 == 0)
-                            points += 25;
+                            points += maxCost + 10;
                         else
                             points += citiesCostsPoints1;
                     }
@@ -380,7 +380,7 @@ public class Intellect {
                     Long citiesCostsPoints2 = citiesCosts.get(river.getKey().getTarget());
                     if (citiesCostsPoints2 != null){
                         if (citiesCostsPoints2 == 0)
-                            points += 25;
+                            points += maxCost + 10;
                         else
                             points += citiesCostsPoints2;
                     }
@@ -388,17 +388,17 @@ public class Intellect {
 
                     switch (nearestCode) {
                         case 1: {
-                            points *= 10;
+                            //points *= 10;
                             break;
                         }
                         case 2: {
-                            points = Integer.MIN_VALUE + 1;
+                            points -= maxCost * 10;
                             break;
                         }
                     }
 
                     if (checkIfRiversAreNear(river.getKey(), lastMove) > 0)
-                        points += 10;
+                        points *= 5;
 
                     if (checkIfCreatingConnection(river.getKey(), false) == -123456)
                         points = Integer.MAX_VALUE - 1;
@@ -452,6 +452,10 @@ public class Intellect {
         return result;
     }
 
+
+
+
+
     //Выбор реки исходя из наших знаний о шахтах
     private River claimFromMineInfo() {
         System.out.println("У меня же есть список шахт!");
@@ -460,6 +464,9 @@ public class Intellect {
 
         return findRiver(mineId);
     }
+
+
+
 
     //Найти реку по ID
     private River findRiver(int mineId) {
@@ -475,17 +482,19 @@ public class Intellect {
         return result;
     }
 
+
+
+
+
     //Делает ход
     public void makeMove() {
 
+        long start = System.currentTimeMillis();
+
         if (!currentWay.isEmpty())
             printCurrentWay();
-        //printMineInfo();
-        //printMineVerticies();
 
         River choice = chooseRiver();
-
-
 
         if (choice == null)
             protocol.passMove();
@@ -494,12 +503,41 @@ public class Intellect {
             lastMove = choice;
             protocol.claimMove(choice.getSource(), choice.getTarget());
             if (newSystem > 0 && newSystem != lastSystem){
+                System.out.println("Пересчитываю цены");
+                printCitiesCosts();
                 calculateCityCosts(newSystem);
                 lastSystem = newSystem;
             }
         }
 
+        long finish = System.currentTimeMillis();
+        System.out.println("Я выполнялся: " + ((finish - start) / 1000.0) + "мс");
+
     }
+
+    //Метод с основной логикой выбора реки
+    private River chooseRiver() {
+        River choice;
+
+        if (!minesInfo.isEmpty()) {
+            choice = claimFromMineInfo();
+        } else {
+            choice = tryToConnectMines();
+            if (choice == null){
+                choice = chooseNearestRiver();
+                if (choice == null){
+                    choice = tryToMakeBadThings();
+                    if (choice == null)
+                        choice = randomRiver();
+                }
+            }
+        }
+
+        return choice;
+    }
+
+
+
 
     //Если река соединяет две разные системы - возвращает "-123456"
     //Если ни одна точка не принадлежит нашей системе, возвращает "-1"
@@ -545,6 +583,7 @@ public class Intellect {
         }
 
         return -123456;
+
     }
 
     private boolean checkIfDifferentSystem(int source, int target){
@@ -572,6 +611,9 @@ public class Intellect {
 
     }
 
+
+
+
     private void printCitiesCosts() {
         System.out.println("*******************");
         for (Map.Entry<Integer, Long> city: citiesCosts.entrySet()){
@@ -588,26 +630,6 @@ public class Intellect {
             System.out.println(count + ": " + river.getSource() + "-" + river.getTarget());
         }
         System.out.println("№№№№№№№№№№№№№№№");
-    }
-
-    private void printMineInfo() {
-        System.out.println("-----");
-        for (Map.Entry<Integer, Integer> mine: minesInfo.entrySet()){
-            System.out.println("Шахта: " + mine.getKey() + ", Рек: " + mine.getValue());
-        }
-        System.out.println("-----");
-    }
-
-    private void printMineVerticies() {
-        System.out.println("+++++");
-        for (Map.Entry<Integer, List<Integer>> obj: minesVerticies.entrySet()){
-            System.out.print("Шахта: " + obj.getKey() + ", Города:");
-            for (Integer integer: obj.getValue()){
-                System.out.print(" " + integer);
-            }
-            System.out.println();
-        }
-        System.out.println("+++++ ");
     }
 
 
