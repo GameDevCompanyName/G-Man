@@ -8,8 +8,17 @@ import java.util.*;
 
 public class Intellect {
 
+    public static final String GMANFACE = "#########%=+*::-.----..%##+-................-::--####\n" + "########@=+*:-.....  .. ... .............   ...@+####\n" + "########%+::--.....                         ...+=####\n" + "#######@=*:---... ..                         ..*#####\n" + "#######%=*:--......                         ...+@@###\n" + "#######%=::---......                         ..-@%###\n" + "#######%=*:::-.... ..    ..                  ..:@@###\n" + "#######%*+::----... ..                ....    .=@@###\n" + "#######@+*::----. .                      ......-#####\n" + "#######=+*-:-::-....                     .......%@###\n" + "#######=+*+:---.. ..          ..      ...-*--...*####\n" + "###+###=%%=*-@=+---......    .......-=####@%@#:.-@+##\n" + "####@####@#########@@+*-.. ..:-*%%#######@%#%@=.*#%##\n" + "####%####################@-.*@###########@=#@%*.@+@##\n" + "####@##############%@######:.*@#############@+..@:###\n" + "####@##@%@%############@##+.. +%@@########@%....+=###\n" + "#######@%*=@@##@##########%..-++*=#######+:-. . ++###\n" + "########=*:+%+::+===%#*+=+=...---.--@@=*-:-.....*=###\n" + "#####%###%+:-:+=##@*:-*++==.....-..........  . *.####\n" + "######%#%=++:-........:@==*.....:*-.        ..::.####\n" + "######%#%%#%%*-.......@@%=: . ...-::..     ..::+#####\n" + "########%%##@=-:.-..-@%@#+*. .---.-**.    ..*:#######\n" + "########%%####+=+*-+%%###%=...-::=..+#-. ..:*########\n" + "#########@####+#@#+#@==####%==@#%-....@. .-=.########\n" + "#############@+##@@#@%%@%@###@*+-......=--:*:########\n" + "#############@%%%####%=**=+@#*... .....:***++########\n" + "#############@##=#@###=+*::==-.*....:*%+:+*+#########\n" + "#############@##@#########+-:**%######@%:%:=#########\n" + "#################%#####@#####%+=.-.@=:*:+:-=#########\n" + "###########@#%####@#######@%*+%####=+=..:.@-#########\n" + "######@%##@#+*###=+@*########@#@%+*%*. .-#@:#########\n" + "#####@%#####:*+##%*=%-+=@=+......... . +@#:-#########\n" + "#####@%#####*+*+###@%%@=++...........-=@@-.-#########\n" + "####@@######=*:*+#####@#=@+:-*--*.-:*=@:..--#########\n" + "####@#######%=*---:#@@%###@%%%%@#%==:....---#########\n" + "#####%#####@@@=:--..-::*##@@%%=*--.......--*#########";
+
+
+    public static final String ANSI_YELLOW = "\u001B[33m";
+    private static final String ANSI_RESET = "\u001B[0m";
+    private static final String ANSI_RED = "\u001B[31m";
+    public static final String ANSI_CYAN = "\u001B[36m";
+
     private long summaryTimeOfThinking = 0l;
     private int moveCounter;
+    private int timeOuts = 0;
 
     private State state;
     private Protocol protocol;
@@ -22,7 +31,7 @@ public class Intellect {
 
     private Map<Integer, List<River>> citiesNeighbours = new HashMap<>();
 
-    private Map<Integer, Long> citiesCosts = new HashMap();
+    private Map<Integer, Map<Integer, Long>> calculatedSystems = new HashMap<>();
     private int maxCost = 0;
 
     private Deque<River> currentWay = new ArrayDeque<>();
@@ -44,7 +53,8 @@ public class Intellect {
         init();
         printCitiesCosts();
         baseKey = (int) minesVerticies.keySet().iterator().next();
-        System.out.println("Инициализируюсь...");
+        System.out.println(ANSI_RED + "Проснитесь и пойте, Мистер Фримен, проснитесь и пойте..." + ANSI_RESET);
+        showYourself();
     }
 
     private void init() {
@@ -73,7 +83,7 @@ public class Intellect {
 
         citiesNeighbours.get(river.getSource()).add(river);
 
-        if (!citiesNeighbours.containsKey(river.getTarget()))
+        if (!citiesNeighbours.containsKey(river.getTarget())){}
             citiesNeighbours.put(river.getTarget(), new LinkedList<River>());
 
         citiesNeighbours.get(river.getTarget()).add(river);
@@ -87,17 +97,19 @@ public class Intellect {
         toVisit.add(mine);
         int count = 0;
         while (!toVisit.isEmpty()){
-            if (count == 1500)
-                break;
             int currentId = toVisit.poll();
             visited.add(currentId);
-            citiesCosts.put(currentId, (long) count);
-            for (int neighbour: getNeighbours(currentId)){
-                if (!visited.contains(neighbour))
+            calculatedSystems.put(mine, new HashMap<>());
+            calculatedSystems.get(mine).put(currentId, (long) count);
+            List<Integer> neighbours = getNeighbours(currentId);
+            if (neighbours == null)
+                continue;
+            for (int neighbour: neighbours){
+                if (!visited.contains(neighbour)) {
                     toVisit.add(neighbour);
+                    visited.add(neighbour);
+                }
             }
-            if (count > maxCost)
-                maxCost = count;
             count++;
         }
     }
@@ -105,6 +117,8 @@ public class Intellect {
     private List<Integer> getNeighbours(int currentId) {
         List<Integer> neighbours = new LinkedList<>();
         List<River> rivers = citiesNeighbours.get(currentId);
+        if (rivers == null)
+            return null;
         for (River river: rivers){
             if (river.getTarget() == currentId)
                 neighbours.add(river.getSource());
@@ -155,6 +169,10 @@ public class Intellect {
             //if (shouldSort != 0)
                 //sortMinesInfo();
         }
+    }
+
+    public void timeout(){
+        timeOuts++;
     }
 
     //Уменьшает значение в таблице по ключу и удаляет его, если оно стало
@@ -231,7 +249,7 @@ public class Intellect {
         } else
             startPoint = baseKey;
 
-        System.out.println("Пытаюсь найти кратчайший путь");
+        //System.out.println("Пытаюсь найти кратчайший путь");
 
         if (!currentWay.isEmpty())
             currentWay.clear();
@@ -242,7 +260,7 @@ public class Intellect {
         toVisit.add(startPoint);
         int count = 0;
         while (!toVisit.isEmpty()){
-            if (count > 350)
+            if (count > 5000)
                 return;
             int currentId = toVisit.poll();
             if (checkIfDifferentSystem(currentId, startPoint)){
@@ -390,7 +408,7 @@ public class Intellect {
 
                     int points = -1;
 
-                    Long citiesCostsPoints1 = citiesCosts.get(river.getKey().getSource());
+                    Long citiesCostsPoints1 = calculatedSystems.get(lastSystem).get(river.getKey().getSource());
                     if (citiesCostsPoints1 != null){
                         if (citiesCostsPoints1 == 0)
                             points += maxCost + 10;
@@ -398,7 +416,7 @@ public class Intellect {
                             points += citiesCostsPoints1;
                     }
 
-                    Long citiesCostsPoints2 = citiesCosts.get(river.getKey().getTarget());
+                    Long citiesCostsPoints2 = calculatedSystems.get(lastSystem).get(river.getKey().getTarget());
                     if (citiesCostsPoints2 != null){
                         if (citiesCostsPoints2 == 0)
                             points += maxCost + 10;
@@ -524,9 +542,14 @@ public class Intellect {
             lastMove = choice;
             protocol.claimMove(choice.getSource(), choice.getTarget());
             if (newSystem > 0 && newSystem != lastSystem){
-                System.out.println("Пересчитываю цены");
-                printCitiesCosts();
-                calculateCityCosts(newSystem);
+
+                if (!calculatedSystems.containsKey(newSystem)){
+                    System.out.println("Пересчитываю цены для новой системки");
+                    calculatedSystems.put(newSystem, new HashMap<>());
+                    //printCitiesCosts();
+                    calculateCityCosts(newSystem);
+                }
+
                 lastSystem = newSystem;
             }
         }
@@ -541,9 +564,14 @@ public class Intellect {
     private void checkTheStatisticsBro(long l) {
         summaryTimeOfThinking += l;
         moveCounter++;
-        System.out.println("Номер хода: " + moveCounter);
-        System.out.println("Время хода: " + l + "мс");
-        System.out.println("MidTime: " + summaryTimeOfThinking/moveCounter + "мс");
+        System.out.println(ANSI_YELLOW + "Номер хода: " + moveCounter + ANSI_RESET);
+        System.out.println(ANSI_YELLOW + "Время хода: " + l + "мс" + ANSI_RESET);
+        System.out.println(ANSI_YELLOW + "MidTime: " + summaryTimeOfThinking/moveCounter + "мс" + ANSI_RESET);
+        System.out.println(ANSI_YELLOW + "Всего я думал " + summaryTimeOfThinking/1000 + " секунд" + ANSI_RESET);
+        if (timeOuts != 0){
+            System.out.println(ANSI_RED + "TIMEOUTS: " + timeOuts + ANSI_RESET);
+        }
+        return;
     }
 
     //Метод с основной логикой выбора реки
@@ -647,7 +675,7 @@ public class Intellect {
 
     private void printCitiesCosts() {
         System.out.println("*******************");
-        for (Map.Entry<Integer, Long> city: citiesCosts.entrySet()){
+        for (Map.Entry<Integer, Long> city: calculatedSystems.get(lastSystem).entrySet()){
             System.out.println(city.getKey() + ": " + city.getValue());
         }
         System.out.println("*******************");
@@ -664,4 +692,8 @@ public class Intellect {
     }
 
 
+    private void showYourself() {
+        System.out.println(ANSI_CYAN + GMANFACE + ANSI_RESET);
+        return;
+    }
 }

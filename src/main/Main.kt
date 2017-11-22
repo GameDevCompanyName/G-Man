@@ -47,6 +47,7 @@ fun main(args: Array<String>) {
                 break@gameloop
             }
             is Timeout -> {
+                intellect.timeout()
                 println("Your time is over...")
             }
             is GameTurnMessage -> {
