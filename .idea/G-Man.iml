@@ -15,6 +15,7 @@
             <array />
           </option>
           <option name="coroutinesState" value="enable" />
+          <option name="version" value="true" />
         </compilerArguments>
       </configuration>
     </facet>
