@@ -96,6 +96,8 @@ public class Intellect {
     private Random randomizer;
 
     private River choiceMakeBad = null;
+    private River choiceNearest = null;
+    private River choicePomeshat = null;
 
     private boolean shouldChangeSystem = false;
     private Queue<Integer> systemsToCheck = new ArrayDeque<>();
@@ -424,15 +426,34 @@ public class Intellect {
 
     //Метод возвращает первую попавшуюся нейтральную реку, прилежащую
     //любой УЖЕ принадлежащей нам
-    private River chooseNearestRiver() {
+    private void chooseNearestRiver() {
+        boolean foundPomeshat = false;
+        boolean foundMakeBad = false;
         System.out.println("Пытаюсь найти ближайшего");
         River result = null;
         int lastPoints = Integer.MIN_VALUE + 1;
         for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
             if (river.getValue() == RiverState.Neutral) {
 
-                if (checkIfCreatingConnection(river.getKey(), false, myId) == -123456)
-                    return river.getKey();
+                for (int i = 0; i < punters; i++) {
+                    if (i != myId)
+                        if (checkIfCreatingConnection(river.getKey(), false, i) == -123456){
+                            choicePomeshat = river.getKey();
+                            foundPomeshat = true;
+                            break;
+                        }
+
+                }
+
+                if (foundPomeshat)
+                    break;
+
+                if (checkIfCreatingConnection(river.getKey(), false, myId) == -123456){
+                    choiceNearest = river.getKey();
+                    if (foundPomeshat)
+                        break;
+                }
+
 
                 byte nearestCode = checkIfNearest(river.getKey());
                 //строка выше проверяет является ли река прилежащий
@@ -445,23 +466,25 @@ public class Intellect {
                     int source = river.getKey().getSource();
                     int target = river.getKey().getTarget();
 
-                    if (calculatedSystems.get(lastSystem).containsKey(source)){
-                        Long citiesCostsPoints1 = calculatedSystems.get(lastSystem).get(source);
-                        if (citiesCostsPoints1 != null){
-                            if (citiesCostsPoints1 == 0)
-                                points += maxCost + 1;
-                            else
-                                points += citiesCostsPoints1;
+                    if (calculatedSystems.containsKey(lastSystem)){
+                        if (calculatedSystems.get(lastSystem).containsKey(source)){
+                            Long citiesCostsPoints1 = calculatedSystems.get(lastSystem).get(source);
+                            if (citiesCostsPoints1 != null){
+                                if (citiesCostsPoints1 == 0)
+                                    points += maxCost + 1;
+                                else
+                                    points += citiesCostsPoints1;
+                            }
                         }
-                    }
 
-                    if (calculatedSystems.get(lastSystem).containsKey(target)){
-                        Long citiesCostsPoints2 = calculatedSystems.get(lastSystem).get(target);
-                        if (citiesCostsPoints2 != null){
-                            if (citiesCostsPoints2 == 0)
-                                points += maxCost + 1;
-                            else
-                                points += citiesCostsPoints2;
+                        if (calculatedSystems.get(lastSystem).containsKey(target)){
+                            Long citiesCostsPoints2 = calculatedSystems.get(lastSystem).get(target);
+                            if (citiesCostsPoints2 != null){
+                                if (citiesCostsPoints2 == 0)
+                                    points += maxCost + 1;
+                                else
+                                    points += citiesCostsPoints2;
+                            }
                         }
                     }
 
@@ -490,7 +513,7 @@ public class Intellect {
                     tryToMakeBadThings(river.getKey());
             }
         }
-        return result;
+        choiceNearest = result;
     }
 
     //Получает на вход нейтральную реку и сравнивает со всеми НАШИМИ
@@ -620,6 +643,8 @@ public class Intellect {
     }
 
     private void reload() {
+        choicePomeshat = null;
+        choiceNearest = null;
         choiceMakeBad = null;
     }
 
@@ -655,6 +680,14 @@ public class Intellect {
             return choice;
 
         System.out.println("покупать шахты больше не нужно");
+
+        chooseNearestRiver();
+
+        choice = choicePomeshat;
+
+        if (choice != null)
+            return choice;
+
         findAWayToClosestSystem();
         choice = tryToConnectSystems();
 
@@ -664,7 +697,7 @@ public class Intellect {
         shouldChangeSystem = true;
 
         System.out.println("Не могу соединять");
-        choice = chooseNearestRiver();
+        choice = choiceNearest;
 
         if (choice != null)
             return choice;
