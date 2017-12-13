@@ -346,9 +346,12 @@ public class Intellect {
         Queue<Integer> toVisit = new ArrayDeque<>();
         steps.put(startPoint, null);
         toVisit.add(startPoint);
+        int timeLimit = 1500;
+        if (timeOuts == 0)
+            timeLimit = 5000;
         int count = 0;
         while (!toVisit.isEmpty()){
-            if (count > 3851)
+            if (count > timeLimit)
                 return;
             int currentId = toVisit.poll();
             if (checkIfDifferentSystem(currentId, startPoint, myId)){
