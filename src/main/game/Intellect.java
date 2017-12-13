@@ -218,10 +218,7 @@ public class Intellect {
         return neighbours;
     }
 
-    private Set<River> getNeighbourRivers(int id, boolean notEnemyOnly) {
-
-        if (!notEnemyOnly)
-            return citiesNeighbours.get(id);
+    private Set<River> getNeighbourRivers(int id) {
 
         Set<River> notEnemyRivers = new HashSet<>();
         for (River river: citiesNeighbours.get(id)){
@@ -352,7 +349,7 @@ public class Intellect {
         toVisit.add(startPoint);
         int count = 0;
         while (!toVisit.isEmpty()){
-            if (count > 5000)
+            if (count > 3851)
                 return;
             int currentId = toVisit.poll();
             if (checkIfDifferentSystem(currentId, startPoint, myId)){
@@ -397,7 +394,7 @@ public class Intellect {
 
 
     private Set<River> getNotEnemyNeighbours(int currentId) {
-        return getNeighbourRivers(currentId, true);
+        return getNeighbourRivers(currentId);
     }
 
     //Выбирает рандомную реку
@@ -413,14 +410,14 @@ public class Intellect {
 
     private void tryToMakeBadThings(River enemyRiver) {
 
-        for (River river: getNeighbourRivers(enemyRiver.getSource(), true)){
+        for (River river: getNeighbourRivers(enemyRiver.getSource())){
             if (state.getRivers().get(river) == RiverState.Neutral){
                 choiceMakeBad = river;
                 return;
             }
         }
 
-        for (River river: getNeighbourRivers(enemyRiver.getTarget(), true)){
+        for (River river: getNeighbourRivers(enemyRiver.getTarget())){
             if (state.getRivers().get(river) == RiverState.Neutral){
                 choiceMakeBad = river;
                 return;
@@ -535,14 +532,14 @@ public class Intellect {
         boolean sourceIsNear = false;
         boolean targetIsNear = false;
 
-        for (River neighbour: getNeighbourRivers(river.getSource(), true)){
+        for (River neighbour: getNeighbourRivers(river.getSource())){
             if (state.getRivers().get(neighbour) == RiverState.Our){
                 sourceIsNear = true;
                 break;
             }
         }
 
-        for (River neighbour: getNeighbourRivers(river.getTarget(), true)){
+        for (River neighbour: getNeighbourRivers(river.getTarget())){
             if (state.getRivers().get(neighbour) == RiverState.Our){
                 targetIsNear = true;
                 break;
