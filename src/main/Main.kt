@@ -31,7 +31,7 @@ fun main(args: Array<String>) {
     val setupData = protocol.setup()
     gameState.init(setupData)
 
-    val intellect = Intellect(gameState, protocol, setupData.punters)
+    val intellect = Intellect(gameState, protocol, setupData)
 
     println("Received id = ${setupData.punter}")
 

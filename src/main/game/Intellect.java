@@ -3,12 +3,15 @@ package game;
 import gamedev.protocol.Protocol;
 import gamedev.protocol.data.Claim;
 import gamedev.protocol.data.River;
+import gamedev.protocol.data.Setup;
 
+import java.lang.reflect.Array;
 import java.util.*;
 
 public class Intellect {
 
-    public static final String FREEMAN_FACE = "... ..... ............ ..........-...........................\n" +
+    public static final String FREEMAN_FACE =
+            "... ..... ............ ..........-...........................\n" +
             ".. ...................*++*******--:-.........................\n" +
             "....... ........:=++++==@#@=+%=+++++=@+:*:+*.................\n" +
             ".............-+%%@@@#@@%==@===%%=%++*=%%***:*-...............\n" +
@@ -66,6 +69,8 @@ public class Intellect {
     private int moveCounter;
     private int timeOuts = 0;
     private int punters = 0;
+    private int myId;
+    private int punterCounter = 0;
 
     private State state;
     private Protocol protocol;
@@ -74,7 +79,7 @@ public class Intellect {
     //затем выбирать, возле каких из них нам покупать реку
     private Map<Integer, Integer> minesInfo = new HashMap<>();
 
-    private Map<Integer, Set<Integer>> minesVerticies = new HashMap<>();
+    //private Map<Integer, Set<Integer>> minesVerticies = new HashMap<>();
 
     private Map<Integer, Set<River>> citiesNeighbours = new HashMap<>();
 
@@ -91,31 +96,48 @@ public class Intellect {
 
     private Random randomizer;
 
-
     private River choiceMakeBad = null;
+
+    private boolean shouldChangeSystem = false;
+    private Queue<Integer> systemsToCheck = new ArrayDeque<>();
+
+    private HashMap<Integer, Set<Integer>>[] systems;
+
 
 
 
     //Конструктор с инициализацией всех необходимых полей
-    public Intellect(State state, Protocol protocol, int punters) {
-        this.punters = punters;
+    public Intellect(State state, Protocol protocol, Setup setupData) {
+        this.punters = setupData.getPunters();
+        this.myId = setupData.getPunter();
         this.state = state;
         this.protocol = protocol;
         this.randomizer = new Random();
         init();
         printCitiesCosts();
-        baseKey = minesVerticies.keySet().iterator().next();
+        baseKey = systems[myId].keySet().iterator().next();
         System.out.println(ANSI_RED + "Проснитесь и пойте, Мистер Фримен, проснитесь и пойте..." + ANSI_RESET);
         showYourself();
     }
 
     private void init() {
 
+        //systems = new HashMap<Integer, Map<Integer, Set<Integer>>>[punters];
+        systems = new HashMap[punters];
+
+        for (int i = 0; i < systems.length; i++){
+            systems[i] = new HashMap<Integer, Set<Integer>>();
+        }
+
         System.out.println("Заполняю информацию о шахтах...");
         for (Integer id : state.getMines()) {
             minesInfo.put(id, 0);
-            minesVerticies.put(id, new HashSet<>());
-            minesVerticies.get(id).add(id);
+            for (HashMap system : systems) {
+                system.put(id, new HashSet<>());
+                ((HashSet) system.get(id)).add(id);
+
+            }
+            systemsToCheck.add(id);
         }
         for (River river : state.getRivers().keySet()) {
             addToNeighbourMap(river);
@@ -212,7 +234,9 @@ public class Intellect {
     //сообщения о совершённом ходе. Мы обновляем наши знания о шахтах и
     //реках рядом с ними.
     public void update(Claim claim) {
-        //System.out.println("Узнал о том, что кто-то забрал мою реку!");
+
+        printSystems();
+
         if (claim.getPunter() != state.getMyId()) {
             if (currentWay.contains(new River(claim.getSource(), claim.getTarget()))
                     || currentWay.contains(new River(claim.getTarget(), claim.getSource())))
@@ -223,8 +247,9 @@ public class Intellect {
             if (minesInfo.containsKey(claim.getTarget())) {
                 decreaseMineValue(claim.getTarget());
             }
-            //if (shouldSort != 0)
-                //sortMinesInfo();
+
+            checkIfCreatingConnection(new River(claim.getTarget(), claim.getSource()), true, claim.getPunter());
+
         }
     }
 
@@ -256,7 +281,7 @@ public class Intellect {
 
 
     private River tryToConnectSystems(){
-        if (minesVerticies.size() < 2)
+        if (systems[myId].size() < 2)
             return null;
 
         River result;
@@ -312,17 +337,13 @@ public class Intellect {
         Queue<Integer> toVisit = new ArrayDeque<>();
         steps.put(startPoint, null);
         toVisit.add(startPoint);
-        int count = 0;
         while (!toVisit.isEmpty()){
-            if (count > 5000)
-                return;
             int currentId = toVisit.poll();
-            if (checkIfDifferentSystem(currentId, startPoint)){
+            if (checkIfDifferentSystem(currentId, startPoint, myId)){
                 rememberTheWay(currentId, steps);
                 return;
             }
             checkId(currentId, steps, toVisit);
-            count++;
         }
 
     }
@@ -405,7 +426,7 @@ public class Intellect {
         for (Map.Entry<River, RiverState> river : state.getRivers().entrySet()) {
             if (river.getValue() == RiverState.Neutral) {
 
-                if (checkIfCreatingConnection(river.getKey(), false) == -123456)
+                if (checkIfCreatingConnection(river.getKey(), false, myId) == -123456)
                     return river.getKey();
 
                 byte nearestCode = checkIfNearest(river.getKey());
@@ -559,9 +580,17 @@ public class Intellect {
         if (choice == null)
             protocol.passMove();
         else {
-            int newSystem = checkIfCreatingConnection(choice, true);
+            int newSystem = checkIfCreatingConnection(choice, false, myId);
             lastMove = choice;
             protocol.claimMove(choice.getSource(), choice.getTarget());
+            if (shouldChangeSystem){
+                int id = systemsToCheck.poll();
+                while (!systems[myId].containsKey(id)){
+                    id = systemsToCheck.poll();
+                }
+                systemsToCheck.add(id);
+                newSystem = id;
+            }
             if (newSystem > 0 && newSystem != lastSystem){
 
                 if (!calculatedSystems.containsKey(newSystem)){
@@ -626,6 +655,8 @@ public class Intellect {
         if (choice != null)
             return choice;
 
+        shouldChangeSystem = true;
+
         System.out.println("Не могу соединять");
         choice = chooseNearestRiver();
 
@@ -649,13 +680,13 @@ public class Intellect {
     //Если река соединяет две разные системы - возвращает "-123456"
     //Если ни одна точка не принадлежит нашей системе, возвращает "-1"
     //Если же только одна из точек принадлежит системе, вовзращается индекс системы
-    private int checkIfCreatingConnection(River choice, boolean shouldChangeInfo) {
+    private int checkIfCreatingConnection(River choice, boolean shouldChangeInfo, int punterId) {
         int target = choice.getTarget();
         int source = choice.getSource();
 
         Integer targetKey = null;
         Integer sourceKey = null;
-        for (Map.Entry<Integer, Set<Integer>> obj: minesVerticies.entrySet()){
+        for (Map.Entry<Integer, Set<Integer>> obj: systems[punterId].entrySet()){
             for (Integer id: obj.getValue()){
                 if (id == target)
                     targetKey = obj.getKey();
@@ -674,21 +705,21 @@ public class Intellect {
 
         if (targetKey != null && sourceKey == null){
             if (shouldChangeInfo)
-                minesVerticies.get(targetKey).add(source);
+                systems[punterId].get(targetKey).add(source);
             return targetKey;
         }
 
         if (targetKey == null){
             if (shouldChangeInfo)
-                minesVerticies.get(sourceKey).add(target);
+                systems[punterId].get(sourceKey).add(target);
             return sourceKey;
         }
 
         if (!targetKey.equals(sourceKey)){
             if (shouldChangeInfo){
                 combineCosts(targetKey, sourceKey);
-                minesVerticies.get(targetKey).addAll(minesVerticies.get(sourceKey));
-                minesVerticies.remove(sourceKey);
+                systems[punterId].get(targetKey).addAll(systems[punterId].get(sourceKey));
+                systems[punterId].remove(sourceKey);
                 lastSystem = targetKey;
             }
 
@@ -718,10 +749,10 @@ public class Intellect {
         calculatedSystems.remove(sourceKey);
     }
 
-    private boolean checkIfDifferentSystem(int source, int target){
+    private boolean checkIfDifferentSystem(int source, int target, int punterId){
         Integer targetKey = null;
         Integer sourceKey = null;
-        for (Map.Entry<Integer, Set<Integer>> obj: minesVerticies.entrySet()){
+        for (Map.Entry<Integer, Set<Integer>> obj: systems[punterId].entrySet()){
             for (Integer id: obj.getValue()){
                 if (id == target)
                     targetKey = obj.getKey();
@@ -744,7 +775,21 @@ public class Intellect {
     }
 
 
+    private void printSystems(){
 
+        for (int i = 0; i < systems.length; i++){
+            System.out.println("ЭТО ПУНТЕР С НОМЕРОМ " + i);
+            System.out.println("*******************");
+            for (Map.Entry<Integer, Set<Integer>> sys: systems[i].entrySet()){
+                System.out.println();
+                System.out.print(sys.getKey() + ": ");
+                for (int city: sys.getValue()){
+                    System.out.print(city + " ");
+                }
+            }
+            System.out.println("*******************");
+        }
+    }
 
     private void printCitiesCosts() {
         System.out.println("*******************");
