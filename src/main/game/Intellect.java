@@ -125,7 +125,6 @@ public class Intellect {
         this.protocol = protocol;
         this.randomizer = new Random();
         init();
-        printCitiesCosts();
         baseKey = systems[myId].keySet().iterator().next();
         System.out.println(ANSI_RED + "Проснитесь и пойте, Мистер Фримен, проснитесь и пойте..." + ANSI_RESET);
         showYourself();
@@ -457,8 +456,7 @@ public class Intellect {
 
                 if (checkIfCreatingConnection(river.getKey(), false, myId) == -123456){
                     choiceNearest = river.getKey();
-                    if (foundPomeshat)
-                        break;
+                    break;
                 }
 
 
@@ -613,9 +611,6 @@ public class Intellect {
     public void makeMove() {
 
         long start = System.currentTimeMillis();
-
-        if (!currentWay.isEmpty())
-            printCurrentWay();
 
         River choice = chooseRiver();
 
@@ -844,56 +839,6 @@ public class Intellect {
         System.out.println(ANSI_RED + "ПОМЕШАЛ КУПИТЬ РЕКУ " + choice.getSource() + "-" + choice.getTarget() + ANSI_RESET);
         System.out.println(ANSI_RED + "Я ПОМЕШАЛ УЖЕ " + pomeshalCount + " раз!" + ANSI_RESET);
         System.out.println(ANSI_RED + "!!!!!!!!!!!!!!!!!!!!!!!!" + ANSI_RESET);
-    }
-
-    private void printSystems(){
-
-        for (int i = 0; i < systems.length; i++){
-            System.out.println();
-            System.out.println("ЭТО ПУНТЕР С НОМЕРОМ " + i);
-            System.out.println("*******************");
-            for (Map.Entry<Integer, Set<Integer>> sys: systems[i].entrySet()){
-                System.out.print(sys.getKey() + ": ");
-                for (int city: sys.getValue()){
-                    System.out.print(city + " ");
-                }
-                System.out.println();
-            }
-            System.out.println("*******************");
-            System.out.println();
-        }
-        System.out.println();
-        System.out.println();
-    }
-
-    private void printCitiesCosts() {
-        System.out.println("*******************");
-        for (Map.Entry<Integer, Long> city: calculatedSystems.get(lastSystem).entrySet()){
-            System.out.println(city.getKey() + ": " + city.getValue());
-        }
-        System.out.println("*******************");
-    }
-
-    private void printCurrentWay(){
-        System.out.println("№№№№№№№№№№№№№№№");
-        int count = 0;
-        for (River river: currentWay){
-            count++;
-            System.out.println(count + ": " + river.getSource() + "-" + river.getTarget());
-        }
-        System.out.println("№№№№№№№№№№№№№№№");
-    }
-
-    private void printNeighbours(){
-        System.out.println("..........................");
-        for (Map.Entry<Integer, Set<River>> neigh: citiesNeighbours.entrySet()){
-            System.out.println(neigh.getKey());
-            for (River river: neigh.getValue()){
-                System.out.print(river.getSource() + "-" + river.getTarget() + "  ");
-            }
-            System.out.println();
-        }
-        System.out.println("..........................");
     }
 
 
