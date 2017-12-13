@@ -62,6 +62,7 @@ public class Intellect {
     private static final String ANSI_RED = "\u001B[31m";
     private static final String ANSI_CYAN = "\u001B[36m";
     private static final String ANSI_PURPLE = "\u001B[35m";
+    private final int POSSIBILITY;
 
     private int pomeshalCount = 0;
     private long summaryTimeOfThinking = 0l;
@@ -111,7 +112,12 @@ public class Intellect {
 
     //Конструктор с инициализацией всех необходимых полей
     public Intellect(State state, Protocol protocol, Setup setupData) {
-        this.punters = setupData.getPunters();
+        punters = setupData.getPunters();
+        if (punters == 2)
+            POSSIBILITY = 60;
+        else
+            POSSIBILITY = 35;
+
         this.myId = setupData.getPunter();
         this.state = state;
         this.protocol = protocol;
@@ -593,6 +599,13 @@ public class Intellect {
 
 
 
+    private boolean possibility(){
+        if (randomizer.nextInt(100) < POSSIBILITY)
+            return true;
+        else
+            return false;
+    }
+
 
 
     //Делает ход
@@ -687,6 +700,8 @@ public class Intellect {
         chooseNearestRiver();
 
         choice = choicePomeshat;
+        if (!possibility())
+            choice = null;
 
         if (choice != null){
             printPOMESHAL(choice);
