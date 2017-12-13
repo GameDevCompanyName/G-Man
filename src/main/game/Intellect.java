@@ -246,8 +246,6 @@ public class Intellect {
     //реках рядом с ними.
     public void update(Claim claim) {
 
-        System.out.println("ПОХОДИЛ ID = " + punterCounter + ", купил " + claim.getSource() + "-" + claim.getTarget());
-
         if (claim.getPunter() != state.getMyId()) {
             if (currentWay.contains(new River(claim.getSource(), claim.getTarget()))
                     || currentWay.contains(new River(claim.getTarget(), claim.getSource())))
@@ -719,7 +717,6 @@ public class Intellect {
             return choice;
         }
 
-        findAWayToClosestSystem();
         choice = tryToConnectSystems();
 
         if (choice != null)
