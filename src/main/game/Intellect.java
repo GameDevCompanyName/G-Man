@@ -63,6 +63,7 @@ public class Intellect {
     private static final String ANSI_CYAN = "\u001B[36m";
     private static final String ANSI_PURPLE = "\u001B[35m";
 
+    private int pomeshalCount = 0;
     private long summaryTimeOfThinking = 0l;
     private long maximalThinkTime = 0l;
     private int moveCounter;
@@ -100,6 +101,7 @@ public class Intellect {
     private River choicePomeshat = null;
 
     private boolean shouldChangeSystem = false;
+    private boolean changeLastMove = true;
     private Queue<Integer> systemsToCheck = new ArrayDeque<>();
 
     private HashMap<Integer, Set<Integer>>[] systems;
@@ -235,8 +237,6 @@ public class Intellect {
     //сообщения о совершённом ходе. Мы обновляем наши знания о шахтах и
     //реках рядом с ними.
     public void update(Claim claim) {
-
-        printSystems();
 
         System.out.println("ПОХОДИЛ ID = " + punterCounter + ", купил " + claim.getSource() + "-" + claim.getTarget());
 
@@ -609,7 +609,8 @@ public class Intellect {
             protocol.passMove();
         else {
             int newSystem = checkIfCreatingConnection(choice, true, myId);
-            lastMove = choice;
+            if (changeLastMove)
+                lastMove = choice;
             System.out.println("КУПИЛ РЕКУ: " + choice.getSource() + "-" + choice.getTarget());
             protocol.claimMove(choice.getSource(), choice.getTarget());
             if (shouldChangeSystem){
@@ -646,6 +647,7 @@ public class Intellect {
         choicePomeshat = null;
         choiceNearest = null;
         choiceMakeBad = null;
+        changeLastMove = true;
     }
 
     private void checkTheStatisticsBro(long l) {
@@ -662,6 +664,7 @@ public class Intellect {
         if (timeOuts != 0){
             System.out.println(ANSI_RED + "TIMEOUTS: " + timeOuts + ANSI_RESET);
         }
+        System.out.println(ANSI_RED + "Помешал раз: " + pomeshalCount + ANSI_RESET);
         System.out.println(ANSI_PURPLE + "Рек куплено: "
                 + moveCounter*punters + "/"
                 + state.getRivers().size()
@@ -685,8 +688,11 @@ public class Intellect {
 
         choice = choicePomeshat;
 
-        if (choice != null)
+        if (choice != null){
+            printPOMESHAL(choice);
+            changeLastMove = false;
             return choice;
+        }
 
         findAWayToClosestSystem();
         choice = tryToConnectSystems();
@@ -812,6 +818,14 @@ public class Intellect {
 
     }
 
+
+    private void printPOMESHAL(River choice) {
+        pomeshalCount++;
+        System.out.println(ANSI_RED + "!!!!!!!!!!!!!!!!!!!!!!!!" + ANSI_RESET);
+        System.out.println(ANSI_RED + "ПОМЕШАЛ КУПИТЬ РЕКУ " + choice.getSource() + "-" + choice.getTarget() + ANSI_RESET);
+        System.out.println(ANSI_RED + "Я ПОМЕШАЛ УЖЕ " + pomeshalCount + " раз!" + ANSI_RESET);
+        System.out.println(ANSI_RED + "!!!!!!!!!!!!!!!!!!!!!!!!" + ANSI_RESET);
+    }
 
     private void printSystems(){
 
