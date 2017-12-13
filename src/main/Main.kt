@@ -53,10 +53,13 @@ fun main(args: Array<String>) {
             is GameTurnMessage -> {
                 for(move in message.move.moves) {
                     when(move) {
-                        is PassMove -> {}
+                        is PassMove -> {
+                            intellect.someoneMadeTurn()
+                        }
                         is ClaimMove -> {
                             gameState.update(move.claim)
                             intellect.update(move.claim)
+                            intellect.someoneMadeTurn()
                         }
                     }
                 }

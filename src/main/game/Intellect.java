@@ -5,7 +5,6 @@ import gamedev.protocol.data.Claim;
 import gamedev.protocol.data.River;
 import gamedev.protocol.data.Setup;
 
-import java.lang.reflect.Array;
 import java.util.*;
 
 public class Intellect {
@@ -237,6 +236,8 @@ public class Intellect {
 
         printSystems();
 
+        System.out.println("ПОХОДИЛ ID = " + punterCounter + ", купил " + claim.getSource() + "-" + claim.getTarget());
+
         if (claim.getPunter() != state.getMyId()) {
             if (currentWay.contains(new River(claim.getSource(), claim.getTarget()))
                     || currentWay.contains(new River(claim.getTarget(), claim.getSource())))
@@ -248,7 +249,7 @@ public class Intellect {
                 decreaseMineValue(claim.getTarget());
             }
 
-            checkIfCreatingConnection(new River(claim.getTarget(), claim.getSource()), true, claim.getPunter());
+            checkIfCreatingConnection(new River(claim.getTarget(), claim.getSource()), true, punterCounter);
 
         }
     }
@@ -278,7 +279,11 @@ public class Intellect {
         return listOfRivers;
     }
 
-
+    public void someoneMadeTurn(){
+        punterCounter++;
+        if (punterCounter == punters)
+            punterCounter = 0;
+    }
 
     private River tryToConnectSystems(){
         if (systems[myId].size() < 2)
@@ -580,8 +585,9 @@ public class Intellect {
         if (choice == null)
             protocol.passMove();
         else {
-            int newSystem = checkIfCreatingConnection(choice, false, myId);
+            int newSystem = checkIfCreatingConnection(choice, true, myId);
             lastMove = choice;
+            System.out.println("КУПИЛ РЕКУ: " + choice.getSource() + "-" + choice.getTarget());
             protocol.claimMove(choice.getSource(), choice.getTarget());
             if (shouldChangeSystem){
                 int id = systemsToCheck.poll();
@@ -686,12 +692,12 @@ public class Intellect {
 
         Integer targetKey = null;
         Integer sourceKey = null;
-        for (Map.Entry<Integer, Set<Integer>> obj: systems[punterId].entrySet()){
-            for (Integer id: obj.getValue()){
+        for (Map.Entry<Integer, Set<Integer>> system: systems[punterId].entrySet()){
+            for (Integer id: system.getValue()){
                 if (id == target)
-                    targetKey = obj.getKey();
+                    targetKey = system.getKey();
                 if (id == source)
-                    sourceKey = obj.getKey();
+                    sourceKey = system.getKey();
                 if (sourceKey != null && targetKey != null)
                     break;
             }
@@ -700,8 +706,6 @@ public class Intellect {
         if (targetKey == null && sourceKey == null){
             return -1;
         }
-
-
 
         if (targetKey != null && sourceKey == null){
             if (shouldChangeInfo)
@@ -720,7 +724,8 @@ public class Intellect {
                 combineCosts(targetKey, sourceKey);
                 systems[punterId].get(targetKey).addAll(systems[punterId].get(sourceKey));
                 systems[punterId].remove(sourceKey);
-                lastSystem = targetKey;
+                if (punterId == myId)
+                    lastSystem = targetKey;
             }
 
             return -123456;
@@ -778,17 +783,21 @@ public class Intellect {
     private void printSystems(){
 
         for (int i = 0; i < systems.length; i++){
+            System.out.println();
             System.out.println("ЭТО ПУНТЕР С НОМЕРОМ " + i);
             System.out.println("*******************");
             for (Map.Entry<Integer, Set<Integer>> sys: systems[i].entrySet()){
-                System.out.println();
                 System.out.print(sys.getKey() + ": ");
                 for (int city: sys.getValue()){
                     System.out.print(city + " ");
                 }
+                System.out.println();
             }
             System.out.println("*******************");
+            System.out.println();
         }
+        System.out.println();
+        System.out.println();
     }
 
     private void printCitiesCosts() {
