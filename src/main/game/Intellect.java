@@ -64,6 +64,8 @@ public class Intellect {
     private static final String ANSI_PURPLE = "\u001B[35m";
     private final int POSSIBILITY;
 
+    private int pomeshat = 10;
+
     private int pomeshalCount = 0;
     private long summaryTimeOfThinking = 0l;
     private long maximalThinkTime = 0l;
@@ -114,9 +116,9 @@ public class Intellect {
     public Intellect(State state, Protocol protocol, Setup setupData) {
         punters = setupData.getPunters();
         if (punters == 2)
-            POSSIBILITY = 60;
+            POSSIBILITY = 55;
         else
-            POSSIBILITY = 35;
+            POSSIBILITY = 25;
 
         this.myId = setupData.getPunter();
         this.state = state;
@@ -350,13 +352,17 @@ public class Intellect {
         Queue<Integer> toVisit = new ArrayDeque<>();
         steps.put(startPoint, null);
         toVisit.add(startPoint);
+        int count = 0;
         while (!toVisit.isEmpty()){
+            if (count > 5000)
+                return;
             int currentId = toVisit.poll();
             if (checkIfDifferentSystem(currentId, startPoint, myId)){
                 rememberTheWay(currentId, steps);
                 return;
             }
             checkId(currentId, steps, toVisit);
+            count++;
         }
 
     }
@@ -672,7 +678,7 @@ public class Intellect {
         System.out.println(ANSI_YELLOW + "Номер хода: " + moveCounter + ANSI_RESET);
         System.out.println(ANSI_YELLOW + "Время хода: " + l + "мс" + ANSI_RESET);
         System.out.println(ANSI_YELLOW + "MidTime: " + summaryTimeOfThinking/moveCounter + "мс" + ANSI_RESET);
-        System.out.println(ANSI_YELLOW + "Всего я думал " + summaryTimeOfThinking/1000  + " секунд" + ANSI_RESET);
+        System.out.println(ANSI_YELLOW + "Всего я думал " + summaryTimeOfThinking/1000  + "с" + ANSI_RESET);
         System.out.println(ANSI_RED + "Самый долгий ход: " + maximalThinkTime + ANSI_RESET);
         if (timeOuts != 0){
             System.out.println(ANSI_RED + "TIMEOUTS: " + timeOuts + ANSI_RESET);
@@ -700,7 +706,11 @@ public class Intellect {
         chooseNearestRiver();
 
         choice = choicePomeshat;
-        if (!possibility())
+
+        if (pomeshat > 0)
+            pomeshat--;
+        else
+            if (!possibility())
             choice = null;
 
         if (choice != null){
